@@ -14,32 +14,11 @@ const svgs = [...whiteSvgs, ...blackSvgs].map((src) => {
 
 const pieces = [
   // white pieces
-  {
-    type: "pawn",
-    color: "white",
-    rank: 2,
-    file: "a",
-  },
-  {
-    type: "pawn",
-    color: "white",
-    rank: 2,
-    file: "b",
-  },
-
+  { type: "pawn", color: "white", rank: 2, file: "a" },
+  { type: "pawn", color: "white", rank: 2, file: "b" },
   // black pieces
-  {
-    type: "pawn",
-    color: "black",
-    rank: 7,
-    file: "a",
-  },
-  {
-    type: "pawn",
-    color: "black",
-    rank: 7,
-    file: "b",
-  },
+  { type: "pawn", color: "black", rank: 7, file: "a" },
+  { type: "pawn", color: "black", rank: 7, file: "b" },
 ];
 
 export function updateAndDraw(
