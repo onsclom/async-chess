@@ -8,7 +8,7 @@ const pieces = structuredClone(startingPieces);
 const leftCursor = { x: 4, y: 7 }; // left is white
 const rightCursor = { x: 4, y: 0 }; // right is black
 
-const dirs = {
+const DIRS = {
   up: { x: 0, y: -1 },
   down: { x: 0, y: 1 },
   left: { x: -1, y: 0 },
@@ -24,7 +24,7 @@ export function updateAndDraw(
   ///////////////////
   while (events.length) {
     const event = events.shift()!;
-    const dir = dirs[event.dir];
+    const dir = DIRS[event.dir];
     if (event.player === "left") {
       leftCursor.x = (leftCursor.x + dir.x + 8) % 8;
       leftCursor.y = (leftCursor.y + dir.y + 8) % 8;
