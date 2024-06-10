@@ -34,7 +34,7 @@ function gameLoop() {
 
   if (SHOW_FRAME_TIME) {
     const endTime = performance.now();
-    const frameTime = `${(endTime - newTime).toFixed(1)}ms / ${BUDGET.toFixed(1)}ms`;
+    const frameTime = `${(endTime - newTime).toFixed(1)}ms / ${BUDGET.toFixed(1)}ms (${((100 * (endTime - newTime)) / BUDGET).toFixed(1)}%)`;
     ctx.fillStyle = "red";
     ctx.font = "20px sans-serif";
     ctx.fillText(frameTime, 10, 20);

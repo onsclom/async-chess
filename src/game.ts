@@ -1,25 +1,9 @@
-const pieceLetters = ["b", "k", "n", "p", "q", "r"];
-const blackSvgs = pieceLetters.map(
-  (letter) => `/pieces/Chess_${letter}dt45.svg`,
-);
-const whiteSvgs = pieceLetters.map(
-  (letter) => `/pieces/Chess_${letter}lt45.svg`,
-);
-// load all svgs
-const svgs = [...whiteSvgs, ...blackSvgs].map((src) => {
-  const img = new Image();
-  img.src = src;
-  return img;
-});
+import { pieceImage } from "./piece-image";
+import { startingPieces } from "./starting-pieces";
 
-const pieces = [
-  // white pieces
-  { type: "pawn", color: "white", rank: 2, file: "a" },
-  { type: "pawn", color: "white", rank: 2, file: "b" },
-  // black pieces
-  { type: "pawn", color: "black", rank: 7, file: "a" },
-  { type: "pawn", color: "black", rank: 7, file: "b" },
-];
+// STATE
+////////////
+const pieces = structuredClone(startingPieces);
 
 export function updateAndDraw(
   canvas: HTMLCanvasElement,
@@ -57,18 +41,12 @@ export function updateAndDraw(
 
   drawBoardBackground("white", ctx, BOARD_1_RECT);
   drawBoardBackground("black", ctx, BOARD_2_RECT);
-
-  ctx.drawImage(
-    svgs[0],
-    BOARD_1_RECT.x,
-    BOARD_1_RECT.y,
-    BOARD_1_RECT.width / GRID_DIM,
-    BOARD_1_RECT.height / GRID_DIM,
-  );
+  drawPieces("white", ctx, BOARD_1_RECT);
+  drawPieces("black", ctx, BOARD_2_RECT);
 }
 
 const GRID_DIM = 8;
-const DARK_GRAY = "#444";
+const GRAY = "#999";
 function drawBoardBackground(
   perspective: "white" | "black",
   ctx: CanvasRenderingContext2D,
@@ -81,8 +59,26 @@ function drawBoardBackground(
       const x1 = rect.x + (x + 1) * (rect.width / GRID_DIM);
       const y1 = rect.y + (y + 1) * (rect.height / GRID_DIM);
       ctx.fillStyle =
-        ((x + y) % 2 === 0) === (perspective === "white") ? "white" : DARK_GRAY;
+        ((x + y) % 2 === 0) === (perspective === "white") ? "white" : GRAY;
       ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
     }),
   );
+}
+
+function drawPieces(
+  perspective: "white" | "black",
+  ctx: CanvasRenderingContext2D,
+  rect: { x: number; y: number; width: number; height: number },
+) {
+  pieces.forEach((piece) => {
+    const x = piece.file.charCodeAt(0) - "a".charCodeAt(0);
+    const y = perspective === "white" ? GRID_DIM - piece.rank : piece.rank - 1;
+    ctx.drawImage(
+      pieceImage(piece.type, piece.color),
+      rect.x + x * (rect.width / GRID_DIM),
+      rect.y + y * (rect.height / GRID_DIM),
+      rect.width / GRID_DIM,
+      rect.height / GRID_DIM,
+    );
+  });
 }
