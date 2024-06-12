@@ -58,7 +58,14 @@ export function updateAndDraw(
           if (!piece || piece.color !== playerColor) continue;
           player.selected = { x: player.cursor.x, y: player.cursor.y };
         } else {
-          // handle "a" with selection
+          if (
+            player.selected.x === player.cursor.x &&
+            player.selected.y === player.cursor.y
+          ) {
+            player.selected = null;
+            continue;
+          }
+
           const selectedRankAndFile = cursorToRankAndFile(player.selected);
           const selectedPiece = pieces.find(
             (piece) =>
