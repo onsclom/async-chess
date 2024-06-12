@@ -2,13 +2,15 @@ core stuff:
 x allow moving pieces
 x allow capturing pieces
 x allow cancelling selections
-- add cooldowns
+x add cooldowns
 - disallow illegal moves
-  -
 - add win condition: taking opponent's king
 - add auto promotion to queen
 - add controller support
 - add premoves
+
+- unselect if selected piece is taken
+- add move indicators
 
 fancy fun stuff:
 - animations
@@ -16,5 +18,3 @@ fancy fun stuff:
   - piece death animation
 - sounds
 - title screen with some fun starting countdown?
-
-random things:

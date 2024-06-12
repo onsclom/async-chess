@@ -1,6 +1,7 @@
 import { pieceImage } from "./piece-image";
 import { startingPieces } from "./starting-pieces";
 import { events } from "./input";
+import { legalMoves, moveIsLegal } from "./move-rules";
 
 const DIRS = {
   up: { x: 0, y: -1 },
@@ -42,7 +43,8 @@ export function updateAndDraw(
       case "move": {
         const dir = DIRS[event.dir];
         const dy = event.player === "left" ? 1 : -1;
-        player.cursor.x = (player.cursor.x + dir.x + 8) % 8;
+        const dx = event.player === "left" ? 1 : -1;
+        player.cursor.x = (player.cursor.x + dx * dir.x + 8) % 8;
         player.cursor.y = (player.cursor.y + dy * dir.y + 8) % 8;
         break;
       }
@@ -73,21 +75,35 @@ export function updateAndDraw(
               piece.file === selectedRankAndFile.file,
           );
           if (!selectedPiece) continue;
+          if (selectedPiece.color !== playerColor) continue;
           const pieceUnderCursor = pieces.find(
             (piece) =>
               piece.rank === cursorToRankAndFile(player.cursor).rank &&
               piece.file === cursorToRankAndFile(player.cursor).file,
           );
-          if (pieceUnderCursor) {
-            if (pieceUnderCursor.color === playerColor) {
-              player.selected = { x: player.cursor.x, y: player.cursor.y };
-              continue;
-            } else {
-              // capture
-              pieces.splice(pieces.indexOf(pieceUnderCursor), 1);
-            }
+          if (pieceUnderCursor && pieceUnderCursor.color === playerColor) {
+            player.selected = { x: player.cursor.x, y: player.cursor.y };
+            continue;
           }
-          // if still here, move the piece
+          if (selectedPiece.cooldownRemaining) {
+            // TODO: add premove
+            continue;
+          }
+          // if here, time to attempt moving the piece
+          const legal = moveIsLegal(
+            selectedPiece,
+            cursorToRankAndFile(player.cursor),
+            pieces,
+          );
+          if (!legal) {
+            player.selected = null;
+            continue;
+          }
+
+          // capture
+          if (pieceUnderCursor) {
+            pieces.splice(pieces.indexOf(pieceUnderCursor), 1);
+          }
           selectedPiece.rank = cursorToRankAndFile(player.cursor).rank;
           selectedPiece.file = cursorToRankAndFile(player.cursor).file;
           selectedPiece.cooldownRemaining = PIECE_COOLDOWN;
@@ -96,9 +112,7 @@ export function updateAndDraw(
         break;
       }
       case "b": {
-        if (player.selected) {
-          player.selected = null;
-        }
+        player.selected = null;
         break;
       }
       default: {
@@ -176,8 +190,58 @@ export function updateAndDraw(
   drawCooldowns(ctx, "black", BOARD_2_RECT);
   drawPieces(ctx, "white", BOARD_1_RECT);
   drawPieces(ctx, "black", BOARD_2_RECT);
+
+  if (playerLeft.selected) {
+    drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT);
+  }
+  if (playerRight.selected) {
+    drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT);
+  }
+
   drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
   drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
+}
+
+function drawMoveIndicators(
+  ctx: CanvasRenderingContext2D,
+  selected: { x: number; y: number },
+  perspective: "white" | "black",
+  rect: { x: number; y: number; width: number; height: number },
+) {
+  const selectedRankAndFile = cursorToRankAndFile(selected);
+  const selectedPiece = pieces.find(
+    (piece) =>
+      piece.rank === selectedRankAndFile.rank &&
+      piece.file === selectedRankAndFile.file,
+  );
+  if (!selectedPiece) return;
+  const moves = legalMoves(selectedPiece, pieces);
+  moves.forEach((move) => {
+    if (!move) return; // TODO: update typescript
+    const rank = move.rank;
+    const file = move.file;
+    const pX =
+      perspective === "white"
+        ? file.charCodeAt(0) - "a".charCodeAt(0)
+        : "h".charCodeAt(0) - file.charCodeAt(0);
+    const pY = perspective === "white" ? 7 - (rank - 1) : rank - 1;
+
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = "gray";
+    const circleRadius = rect.width / GRID_DIM / 8;
+    const gridSquareSize = rect.width / GRID_DIM;
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(
+      rect.x + pX * gridSquareSize + gridSquareSize / 2 - circleRadius,
+      rect.y + pY * gridSquareSize + gridSquareSize / 2 - circleRadius,
+      circleRadius * 2,
+      circleRadius * 2,
+      circleRadius,
+    );
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
 }
 
 function drawCooldowns(
@@ -188,7 +252,10 @@ function drawCooldowns(
   pieces.forEach((piece) => {
     if (piece.cooldownRemaining === 0) return;
     const cooldownPercent = piece.cooldownRemaining / PIECE_COOLDOWN;
-    const x = piece.file.charCodeAt(0) - "a".charCodeAt(0);
+    const x =
+      perspective === "white"
+        ? piece.file.charCodeAt(0) - "a".charCodeAt(0)
+        : "h".charCodeAt(0) - piece.file.charCodeAt(0);
     const y = perspective === "white" ? GRID_DIM - piece.rank : piece.rank - 1;
     ctx.fillStyle = "rgba(255, 255, 0, 0.5)";
     ctx.fillRect(
@@ -214,9 +281,11 @@ function drawSelected(
   rect: { x: number; y: number; width: number; height: number },
 ) {
   const pY = perspective === "white" ? selected.y : GRID_DIM - 1 - selected.y;
-  ctx.fillStyle = "#aaf";
+  const pX = perspective === "white" ? selected.x : GRID_DIM - 1 - selected.x;
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = "#8f8";
   ctx.fillRect(
-    rect.x + selected.x * (rect.width / GRID_DIM),
+    rect.x + pX * (rect.width / GRID_DIM),
     rect.y + pY * (rect.height / GRID_DIM),
     rect.width / GRID_DIM,
     rect.height / GRID_DIM,
@@ -234,11 +303,15 @@ function drawCursor(
     perspective === "white"
       ? cursor.animated.y
       : GRID_DIM - 1 - cursor.animated.y;
-  ctx.strokeStyle = "#aaf";
+  const pX =
+    perspective === "white"
+      ? cursor.animated.x
+      : GRID_DIM - 1 - cursor.animated.x;
+  ctx.strokeStyle = "#afa";
   const BORDER_WIDTH = rect.width * 0.01;
   ctx.lineWidth = BORDER_WIDTH;
   ctx.strokeRect(
-    rect.x + cursor.animated.x * (rect.width / GRID_DIM),
+    rect.x + pX * (rect.width / GRID_DIM),
     rect.y + pY * (rect.height / GRID_DIM),
     rect.width / GRID_DIM,
     rect.height / GRID_DIM,
@@ -272,7 +345,10 @@ function drawPieces(
   rect: { x: number; y: number; width: number; height: number },
 ) {
   pieces.forEach((piece) => {
-    const x = piece.file.charCodeAt(0) - "a".charCodeAt(0);
+    const x =
+      perspective === "white"
+        ? piece.file.charCodeAt(0) - "a".charCodeAt(0)
+        : "h".charCodeAt(0) - piece.file.charCodeAt(0);
     const y = perspective === "white" ? GRID_DIM - piece.rank : piece.rank - 1;
     ctx.drawImage(
       pieceImage(piece.type, piece.color),
