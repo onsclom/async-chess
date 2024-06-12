@@ -1,0 +1,18 @@
+core stuff:
+x allow moving pieces
+x allow capturing pieces
+x allow cancelling selections
+- add cooldowns
+- disallow illegal moves
+  -
+- add win condition: taking opponent's king
+- add auto promotion to queen
+- add controller support
+- add premoves
+
+fancy fun stuff:
+- animations
+  - piece move animation
+  - piece death animation
+- sounds
+- title screen with some fun starting countdown?

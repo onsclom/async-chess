@@ -1,7 +1,6 @@
 import { updateAndDraw } from "./game";
 
-// null for requestAnimationFrame, or a number for fixed FPS
-const FIXED_FPS = null;
+const FIXED_FPS = null; // null for requestAnimationFrame, or a number for fixed FPS
 const SHOW_FRAME_TIME = true;
 const BUDGET = 1000 / 120;
 
@@ -10,16 +9,16 @@ document.body.appendChild(canvas);
 const ctx = canvas.getContext("2d")!;
 
 if (FIXED_FPS) {
-  setInterval(gameLoop, 1000 / FIXED_FPS);
+  setInterval(gameStep, 1000 / FIXED_FPS);
 } else {
   requestAnimationFrame(function render() {
-    gameLoop();
+    gameStep();
     requestAnimationFrame(render);
   });
 }
 
 let lastTime: number | null = null;
-function gameLoop() {
+function gameStep() {
   {
     const canvasRect = canvas.getBoundingClientRect();
     canvas.width = canvasRect.width * window.devicePixelRatio;
