@@ -440,10 +440,7 @@ function drawBoardBackground(
       const y0 = rect.y + y * (rect.height / GRID_DIM);
       const x1 = rect.x + (x + 1) * (rect.width / GRID_DIM);
       const y1 = rect.y + (y + 1) * (rect.height / GRID_DIM);
-      ctx.fillStyle =
-        ((x + y) % 2 === 0) === (perspective === "white")
-          ? "white"
-          : DARK_COLOR;
+      ctx.fillStyle = (x + y) % 2 === 0 ? "white" : DARK_COLOR;
       ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
     }),
   );
