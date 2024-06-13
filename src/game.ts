@@ -35,18 +35,125 @@ export function updateAndDraw(
 ) {
   // UPDATE
   ///////////////////
-  while (events.length) {
-    const event = events.shift()!;
+  handleGameInput(events);
+  updatePieces(dt);
+  updateSelections(dt);
 
-    // if there's not two kings, the game is over!!
-    const kings = pieces.filter((p) => p.type === "king");
-    if (kings.length !== 2) {
-      continue;
+  // DRAW
+  ///////////////////
+  const DRAWING_RECT = canvas.getBoundingClientRect();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const { BOARD_1_RECT, BOARD_2_RECT } = calculateBoardRects(DRAWING_RECT);
+  drawBoardBackground(ctx, BOARD_1_RECT);
+  drawBoardBackground(ctx, BOARD_2_RECT);
+  drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
+  drawSelected(ctx, playerRight.selected, "black", BOARD_2_RECT);
+  drawCooldowns(ctx, "white", BOARD_1_RECT);
+  drawCooldowns(ctx, "black", BOARD_2_RECT);
+  drawPieces(ctx, "white", BOARD_1_RECT);
+  drawPieces(ctx, "black", BOARD_2_RECT);
+  drawPremoves(ctx, "white", BOARD_1_RECT);
+  drawPremoves(ctx, "black", BOARD_2_RECT);
+  drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT);
+  drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT);
+  drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
+  drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
+}
+
+function updateSelections(dt: number) {
+  if (playerLeft.selected) {
+    const selectedPiece = pieces.find(
+      (piece) =>
+        piece.rank === coordsToRankAndFile(playerLeft.selected!).rank &&
+        piece.file === coordsToRankAndFile(playerLeft.selected!).file,
+    );
+    if (!selectedPiece || selectedPiece.color !== "white") {
+      playerLeft.selected = null;
     }
+  }
+  if (playerRight.selected) {
+    const selectedPiece = pieces.find(
+      (piece) =>
+        piece.rank === coordsToRankAndFile(playerRight.selected!).rank &&
+        piece.file === coordsToRankAndFile(playerRight.selected!).file,
+    );
+    if (!selectedPiece || selectedPiece.color !== "black") {
+      playerRight.selected = null;
+    }
+  }
 
+  const speed = dt * 0.02;
+  [playerLeft.cursor, playerRight.cursor].forEach((cursor) => {
+    cursor.animated.x = (1 - speed) * cursor.animated.x + speed * cursor.x;
+    cursor.animated.y = (1 - speed) * cursor.animated.y + speed * cursor.y;
+
+    const distanceToTarget = Math.hypot(
+      cursor.x - cursor.animated.x,
+      cursor.y - cursor.animated.y,
+    );
+    const minDistance = 3.5; // squares away
+    if (distanceToTarget > minDistance) {
+      const percentToTravel = (distanceToTarget - minDistance) / minDistance;
+      cursor.animated.x =
+        cursor.x * percentToTravel + cursor.animated.x * (1 - percentToTravel);
+      cursor.animated.y =
+        cursor.y * percentToTravel + cursor.animated.y * (1 - percentToTravel);
+    }
+  });
+}
+
+function updatePieces(dt: number) {
+  pieces.forEach((piece) => {
+    if (piece.cooldownRemaining) {
+      piece.cooldownRemaining = Math.max(piece.cooldownRemaining - dt, 0);
+      if (piece.cooldownRemaining === 0 && piece.premove) {
+        attemptMove(piece, piece.premove);
+        piece.premove = null;
+      }
+    }
+    if (piece.premove) {
+      const legal = moveIsLegal(piece, piece.premove, pieces);
+      if (!legal) {
+        piece.premove = null;
+      }
+    }
+  });
+}
+
+function calculateBoardRects(DRAWING_RECT: DOMRect) {
+  /*
+                            VERT_SPACE
+      HORI_SPACE BOARD_SIZE HORI_SPACE BOARD_SIZE HORI_SPACE
+                            VERT_SPACE
+   */
+  const MIN_MARGIN = DRAWING_RECT.width * 0.05;
+  const BOARD_SIZE = Math.min(
+    (DRAWING_RECT.width - 3 * MIN_MARGIN) / 2,
+    DRAWING_RECT.height - 2 * MIN_MARGIN,
+  );
+  const HORI_SPACE = (DRAWING_RECT.width - BOARD_SIZE * 2) / 3;
+  const VERT_SPACE = (DRAWING_RECT.height - BOARD_SIZE) / 2;
+
+  const BOARD_1_RECT = {
+    x: HORI_SPACE,
+    y: VERT_SPACE,
+    width: BOARD_SIZE,
+    height: BOARD_SIZE,
+  };
+  const BOARD_2_RECT = {
+    x: HORI_SPACE * 2 + BOARD_SIZE,
+    y: VERT_SPACE,
+    width: BOARD_SIZE,
+    height: BOARD_SIZE,
+  };
+  return { BOARD_1_RECT, BOARD_2_RECT };
+}
+
+function handleGameInput(eventQueue: typeof events) {
+  while (eventQueue.length) {
+    const event = eventQueue.shift()!;
     const player = event.player === "left" ? playerLeft : playerRight;
     const playerColor = event.player === "left" ? "white" : "black";
-
     switch (event.type) {
       case "move": {
         const dir = DIRS[event.dir];
@@ -67,6 +174,7 @@ export function updateAndDraw(
           );
           if (!piece || piece.color !== playerColor) continue;
           player.selected = { x: player.cursor.x, y: player.cursor.y };
+          piece.premove = null;
         } else {
           if (
             player.selected.x === player.cursor.x &&
@@ -111,133 +219,11 @@ export function updateAndDraw(
         }
         break;
       }
-      case "b": {
-        player.selected = null;
-        break;
-      }
       default: {
         throw new Error("Unknown event type");
       }
     }
   }
-
-  // go through all pieces and decrement cooldown
-  pieces.forEach((piece) => {
-    if (piece.cooldownRemaining) {
-      piece.cooldownRemaining = Math.max(piece.cooldownRemaining - dt, 0);
-      if (piece.cooldownRemaining === 0 && piece.premove) {
-        attemptMove(piece, piece.premove);
-        piece.premove = null;
-      }
-    }
-    if (piece.premove) {
-      // check premove is still legal!
-      const legal = moveIsLegal(piece, piece.premove, pieces);
-      if (!legal) {
-        piece.premove = null;
-      }
-    }
-  });
-
-  // ensure selections are still valid
-  if (playerLeft.selected) {
-    const selectedPiece = pieces.find(
-      (piece) =>
-        piece.rank === coordsToRankAndFile(playerLeft.selected!).rank &&
-        piece.file === coordsToRankAndFile(playerLeft.selected!).file,
-    );
-    if (!selectedPiece || selectedPiece.color !== "white") {
-      playerLeft.selected = null;
-    }
-  }
-  if (playerRight.selected) {
-    const selectedPiece = pieces.find(
-      (piece) =>
-        piece.rank === coordsToRankAndFile(playerRight.selected!).rank &&
-        piece.file === coordsToRankAndFile(playerRight.selected!).file,
-    );
-    if (!selectedPiece || selectedPiece.color !== "black") {
-      playerRight.selected = null;
-    }
-  }
-
-  // animated cursors
-  const speed = dt * 0.02;
-  [playerLeft.cursor, playerRight.cursor].forEach((cursor) => {
-    cursor.animated.x = (1 - speed) * cursor.animated.x + speed * cursor.x;
-    cursor.animated.y = (1 - speed) * cursor.animated.y + speed * cursor.y;
-
-    const distanceToTarget = Math.hypot(
-      cursor.x - cursor.animated.x,
-      cursor.y - cursor.animated.y,
-    );
-    const minDistance = 3.5; // squares away
-    if (distanceToTarget > minDistance) {
-      const percentToTravel = (distanceToTarget - minDistance) / minDistance;
-      cursor.animated.x =
-        cursor.x * percentToTravel + cursor.animated.x * (1 - percentToTravel);
-      cursor.animated.y =
-        cursor.y * percentToTravel + cursor.animated.y * (1 - percentToTravel);
-    }
-  });
-
-  // DRAW
-  ///////////////////
-  const DRAWING_RECT = canvas.getBoundingClientRect();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  /*
-                          VERT_SPACE
-    HORI_SPACE BOARD_SIZE HORI_SPACE BOARD_SIZE HORI_SPACE
-                          VERT_SPACE
- */
-  const MIN_MARGIN = DRAWING_RECT.width * 0.05;
-  const BOARD_SIZE = Math.min(
-    (DRAWING_RECT.width - 3 * MIN_MARGIN) / 2,
-    DRAWING_RECT.height - 2 * MIN_MARGIN,
-  );
-  const HORI_SPACE = (DRAWING_RECT.width - BOARD_SIZE * 2) / 3;
-  const VERT_SPACE = (DRAWING_RECT.height - BOARD_SIZE) / 2;
-
-  const BOARD_1_RECT = {
-    x: HORI_SPACE,
-    y: VERT_SPACE,
-    width: BOARD_SIZE,
-    height: BOARD_SIZE,
-  };
-  const BOARD_2_RECT = {
-    x: HORI_SPACE * 2 + BOARD_SIZE,
-    y: VERT_SPACE,
-    width: BOARD_SIZE,
-    height: BOARD_SIZE,
-  };
-
-  drawBoardBackground(ctx, BOARD_1_RECT);
-  drawBoardBackground(ctx, BOARD_2_RECT);
-
-  if (playerLeft.selected) {
-    drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
-  }
-  if (playerRight.selected) {
-    drawSelected(ctx, playerRight.selected, "black", BOARD_2_RECT);
-  }
-  //drawCooldowns
-  drawCooldowns(ctx, "white", BOARD_1_RECT);
-  drawCooldowns(ctx, "black", BOARD_2_RECT);
-  drawPieces(ctx, "white", BOARD_1_RECT);
-  drawPieces(ctx, "black", BOARD_2_RECT);
-  drawPremoves(ctx, "white", BOARD_1_RECT);
-  drawPremoves(ctx, "black", BOARD_2_RECT);
-
-  if (playerLeft.selected) {
-    drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT);
-  }
-  if (playerRight.selected) {
-    drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT);
-  }
-
-  drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
-  drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
 }
 
 function attemptMove(
@@ -343,10 +329,11 @@ function drawArrow(
 
 function drawMoveIndicators(
   ctx: CanvasRenderingContext2D,
-  selected: { x: number; y: number },
+  selected: { x: number; y: number } | null,
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
 ) {
+  if (!selected) return;
   const selectedRankAndFile = coordsToRankAndFile(selected);
   const selectedPiece = pieces.find(
     (piece) =>
@@ -415,10 +402,11 @@ function coordsToRankAndFile(coords: { x: number; y: number }) {
 
 function drawSelected(
   ctx: CanvasRenderingContext2D,
-  selected: { x: number; y: number },
+  selected: { x: number; y: number } | null,
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
 ) {
+  if (!selected) return;
   const pY = perspective === "white" ? selected.y : GRID_DIM - 1 - selected.y;
   const pX = perspective === "white" ? selected.x : GRID_DIM - 1 - selected.x;
   ctx.globalAlpha = 0.75;
