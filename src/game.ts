@@ -10,7 +10,7 @@ const DIRS = {
   right: { x: 1, y: 0 },
 };
 const DARK_COLOR = "#999";
-const PIECE_COOLDOWN = 7500;
+const PIECE_COOLDOWN = 10000;
 
 // STATE
 ///////////////////
@@ -130,7 +130,36 @@ export function updateAndDraw(
         piece.premove = null;
       }
     }
+    if (piece.premove) {
+      // check premove is still legal!
+      const legal = moveIsLegal(piece, piece.premove, pieces);
+      if (!legal) {
+        piece.premove = null;
+      }
+    }
   });
+
+  // ensure selections are still valid
+  if (playerLeft.selected) {
+    const selectedPiece = pieces.find(
+      (piece) =>
+        piece.rank === coordsToRankAndFile(playerLeft.selected!).rank &&
+        piece.file === coordsToRankAndFile(playerLeft.selected!).file,
+    );
+    if (!selectedPiece || selectedPiece.color !== "white") {
+      playerLeft.selected = null;
+    }
+  }
+  if (playerRight.selected) {
+    const selectedPiece = pieces.find(
+      (piece) =>
+        piece.rank === coordsToRankAndFile(playerRight.selected!).rank &&
+        piece.file === coordsToRankAndFile(playerRight.selected!).file,
+    );
+    if (!selectedPiece || selectedPiece.color !== "black") {
+      playerRight.selected = null;
+    }
+  }
 
   // animated cursors
   const speed = dt * 0.02;
@@ -183,8 +212,8 @@ export function updateAndDraw(
     height: BOARD_SIZE,
   };
 
-  drawBoardBackground(ctx, "white", BOARD_1_RECT);
-  drawBoardBackground(ctx, "black", BOARD_2_RECT);
+  drawBoardBackground(ctx, BOARD_1_RECT);
+  drawBoardBackground(ctx, BOARD_2_RECT);
 
   if (playerLeft.selected) {
     drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
@@ -431,7 +460,6 @@ function drawCursor(
 let GRID_DIM = 8;
 function drawBoardBackground(
   ctx: CanvasRenderingContext2D,
-  perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
 ) {
   Array.from({ length: GRID_DIM }).forEach((_, y) =>

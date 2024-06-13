@@ -12,15 +12,22 @@ x add auto promotion to queen
 - add controller support
 x add premoves
 
-core stuff discovered while working on core stuff:
+other core stuff discovered while working on core stuff:
 x unselect if selected piece is taken
 x add move indicators
 - handle enemy taking select piece
+- cancel premoves as soon as they are illegal
 
-fancy fun stuff:
+fancy but important fun stuff:
 - draw different move indicator for taking pieces
 - animations
   - piece move animation
   - piece death animation
 - sounds
 - title screen with some fun starting countdown?
+
+- randomize player we do actions for first every frame
+(inputs can come in on same frame, lets make it fair)
+
+future stuff:
+- consider using seb's premove logic
