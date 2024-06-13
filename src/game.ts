@@ -17,6 +17,7 @@ const PIECE_COOLDOWN = 5000;
 const pieces = structuredClone(startingPieces).map((piece) => ({
   ...piece,
   cooldownRemaining: 0,
+  premove: null as null | { rank: number; file: string },
 }));
 const playerLeft = {
   cursor: { x: 4, y: 7, animated: { x: 4, y: 7 } },
@@ -36,6 +37,13 @@ export function updateAndDraw(
   ///////////////////
   while (events.length) {
     const event = events.shift()!;
+
+    // if there's not two kings, the game is over!!
+    const kings = pieces.filter((p) => p.type === "king");
+    if (kings.length !== 2) {
+      continue;
+    }
+
     const player = event.player === "left" ? playerLeft : playerRight;
     const playerColor = event.player === "left" ? "white" : "black";
 
@@ -86,7 +94,15 @@ export function updateAndDraw(
             continue;
           }
           if (selectedPiece.cooldownRemaining) {
-            // TODO: add premove
+            const legal = moveIsLegal(
+              selectedPiece,
+              cursorToRankAndFile(player.cursor),
+              pieces,
+            );
+            if (legal) {
+              selectedPiece.premove = cursorToRankAndFile(player.cursor);
+            }
+            player.selected = null;
             continue;
           }
           // if here, time to attempt moving the piece
@@ -107,6 +123,14 @@ export function updateAndDraw(
           selectedPiece.rank = cursorToRankAndFile(player.cursor).rank;
           selectedPiece.file = cursorToRankAndFile(player.cursor).file;
           selectedPiece.cooldownRemaining = PIECE_COOLDOWN;
+          // if the piece is a pawn, check for promotion
+          if (selectedPiece.type === "pawn") {
+            const { rank } = cursorToRankAndFile(player.cursor);
+            const goal = playerColor === "white" ? 8 : 1;
+            if (rank === goal) {
+              selectedPiece.type = "queen";
+            }
+          }
           player.selected = null;
         }
         break;
@@ -190,6 +214,8 @@ export function updateAndDraw(
   drawCooldowns(ctx, "black", BOARD_2_RECT);
   drawPieces(ctx, "white", BOARD_1_RECT);
   drawPieces(ctx, "black", BOARD_2_RECT);
+  drawPremoves(ctx, "white", BOARD_1_RECT);
+  drawPremoves(ctx, "black", BOARD_2_RECT);
 
   if (playerLeft.selected) {
     drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT);
@@ -200,6 +226,46 @@ export function updateAndDraw(
 
   drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
   drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
+}
+
+function drawPremoves(
+  ctx: CanvasRenderingContext2D,
+  perspective: "white" | "black",
+  rect: { x: number; y: number; width: number; height: number },
+) {
+  pieces.forEach((piece) => {
+    if (!piece.premove || piece.color !== perspective) return;
+    const from = cursorToRankAndFile({
+      x: piece.file.charCodeAt(0) - "a".charCodeAt(0),
+      y: piece.rank - 1,
+    });
+    const to = piece.premove;
+    const fromX =
+      rect.x + (from.file.charCodeAt(0) - "a".charCodeAt(0)) * (rect.width / 8);
+    const fromY = rect.y + (8 - from.rank) * (rect.height / 8);
+    const toX =
+      rect.x + (to.file.charCodeAt(0) - "a".charCodeAt(0)) * (rect.width / 8);
+    const toY = rect.y + (8 - to.rank) * (rect.height / 8);
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = "green";
+    ctx.strokeWidth = 10;
+    drawArrow(ctx, fromX, fromY, toX, toY);
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawArrow(
+  ctx: CanvasRenderingContext2D,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+) {
+  // draw the line
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
 }
 
 function drawMoveIndicators(

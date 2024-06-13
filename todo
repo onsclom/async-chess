@@ -3,16 +3,22 @@ x allow moving pieces
 x allow capturing pieces
 x allow cancelling selections
 x add cooldowns
-- disallow illegal moves
+x disallow illegal moves
 - add win condition: taking opponent's king
-- add auto promotion to queen
+  x stop taking inputs
+  - show win screen
+  - allow restarting game maybe?
+x add auto promotion to queen
 - add controller support
 - add premoves
 
-- unselect if selected piece is taken
-- add move indicators
+core stuff discovered while working on core stuff:
+x unselect if selected piece is taken
+x add move indicators
+- handle enemy taking select piece
 
 fancy fun stuff:
+- draw different move indicator for taking pieces
 - animations
   - piece move animation
   - piece death animation
