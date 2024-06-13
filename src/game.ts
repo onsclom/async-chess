@@ -10,7 +10,7 @@ const DIRS = {
   right: { x: 1, y: 0 },
 };
 const DARK_COLOR = "#999";
-const PIECE_COOLDOWN = 5000;
+const PIECE_COOLDOWN = 7500;
 
 // STATE
 ///////////////////
@@ -59,7 +59,7 @@ export function updateAndDraw(
       case "a": {
         if (!player.selected) {
           // handle "a" with no selection
-          const rankAndFile = cursorToRankAndFile(player.cursor);
+          const rankAndFile = coordsToRankAndFile(player.cursor);
           const piece = pieces.find(
             (piece) =>
               piece.rank === rankAndFile.rank &&
@@ -76,7 +76,7 @@ export function updateAndDraw(
             continue;
           }
 
-          const selectedRankAndFile = cursorToRankAndFile(player.selected);
+          const selectedRankAndFile = coordsToRankAndFile(player.selected);
           const selectedPiece = pieces.find(
             (piece) =>
               piece.rank === selectedRankAndFile.rank &&
@@ -86,8 +86,8 @@ export function updateAndDraw(
           if (selectedPiece.color !== playerColor) continue;
           const pieceUnderCursor = pieces.find(
             (piece) =>
-              piece.rank === cursorToRankAndFile(player.cursor).rank &&
-              piece.file === cursorToRankAndFile(player.cursor).file,
+              piece.rank === coordsToRankAndFile(player.cursor).rank &&
+              piece.file === coordsToRankAndFile(player.cursor).file,
           );
           if (pieceUnderCursor && pieceUnderCursor.color === playerColor) {
             player.selected = { x: player.cursor.x, y: player.cursor.y };
@@ -96,41 +96,17 @@ export function updateAndDraw(
           if (selectedPiece.cooldownRemaining) {
             const legal = moveIsLegal(
               selectedPiece,
-              cursorToRankAndFile(player.cursor),
+              coordsToRankAndFile(player.cursor),
               pieces,
             );
             if (legal) {
-              selectedPiece.premove = cursorToRankAndFile(player.cursor);
+              const rankAndFile = coordsToRankAndFile(player.cursor);
+              selectedPiece.premove = rankAndFile;
             }
             player.selected = null;
             continue;
           }
-          // if here, time to attempt moving the piece
-          const legal = moveIsLegal(
-            selectedPiece,
-            cursorToRankAndFile(player.cursor),
-            pieces,
-          );
-          if (!legal) {
-            player.selected = null;
-            continue;
-          }
-
-          // capture
-          if (pieceUnderCursor) {
-            pieces.splice(pieces.indexOf(pieceUnderCursor), 1);
-          }
-          selectedPiece.rank = cursorToRankAndFile(player.cursor).rank;
-          selectedPiece.file = cursorToRankAndFile(player.cursor).file;
-          selectedPiece.cooldownRemaining = PIECE_COOLDOWN;
-          // if the piece is a pawn, check for promotion
-          if (selectedPiece.type === "pawn") {
-            const { rank } = cursorToRankAndFile(player.cursor);
-            const goal = playerColor === "white" ? 8 : 1;
-            if (rank === goal) {
-              selectedPiece.type = "queen";
-            }
-          }
+          attemptMove(selectedPiece, coordsToRankAndFile(player.cursor));
           player.selected = null;
         }
         break;
@@ -144,9 +120,16 @@ export function updateAndDraw(
       }
     }
   }
+
   // go through all pieces and decrement cooldown
   pieces.forEach((piece) => {
-    piece.cooldownRemaining = Math.max(piece.cooldownRemaining - dt, 0);
+    if (piece.cooldownRemaining) {
+      piece.cooldownRemaining = Math.max(piece.cooldownRemaining - dt, 0);
+      if (piece.cooldownRemaining === 0 && piece.premove) {
+        attemptMove(piece, piece.premove);
+        piece.premove = null;
+      }
+    }
   });
 
   // animated cursors
@@ -228,6 +211,44 @@ export function updateAndDraw(
   drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
 }
 
+function attemptMove(
+  piece: {
+    rank: number;
+    file: string;
+    color: "white" | "black";
+    type: "pawn" | "rook" | "knight" | "bishop" | "queen" | "king";
+    cooldownRemaining: number;
+    premove: { rank: number; file: string } | null;
+  },
+  target: {
+    rank: number;
+    file: string;
+  },
+) {
+  // if here, time to attempt moving the piece
+  const legal = moveIsLegal(piece, target, pieces);
+  if (!legal) return;
+  // capture
+  const pieceUnderTarget = pieces.find(
+    (p) => p.rank === target.rank && p.file === target.file,
+  );
+  if (pieceUnderTarget) {
+    pieces.splice(pieces.indexOf(pieceUnderTarget), 1);
+  }
+  piece.rank = target.rank;
+  piece.file = target.file;
+  piece.cooldownRemaining = PIECE_COOLDOWN;
+  piece.premove = null;
+  // if the piece is a pawn, check for promotion
+  if (piece.type === "pawn") {
+    const playerColor = piece.color;
+    const goal = playerColor === "white" ? 8 : 1;
+    if (piece.rank === goal) {
+      piece.type = "queen";
+    }
+  }
+}
+
 function drawPremoves(
   ctx: CanvasRenderingContext2D,
   perspective: "white" | "black",
@@ -235,22 +256,33 @@ function drawPremoves(
 ) {
   pieces.forEach((piece) => {
     if (!piece.premove || piece.color !== perspective) return;
-    const from = cursorToRankAndFile({
-      x: piece.file.charCodeAt(0) - "a".charCodeAt(0),
-      y: piece.rank - 1,
-    });
-    const to = piece.premove;
-    const fromX =
-      rect.x + (from.file.charCodeAt(0) - "a".charCodeAt(0)) * (rect.width / 8);
-    const fromY = rect.y + (8 - from.rank) * (rect.height / 8);
-    const toX =
-      rect.x + (to.file.charCodeAt(0) - "a".charCodeAt(0)) * (rect.width / 8);
-    const toY = rect.y + (8 - to.rank) * (rect.height / 8);
+    const fromX = piece.file.charCodeAt(0) - "a".charCodeAt(0);
+    const fromY = 8 - piece.rank;
+    const toX = piece.premove.file.charCodeAt(0) - "a".charCodeAt(0);
+    const toY = 8 - piece.premove.rank;
+    const perspectiveFromX = perspective === "white" ? fromX : 7 - fromX;
+    const perspectiveFromY = perspective === "white" ? fromY : 7 - fromY;
+    const perspectiveToX = perspective === "white" ? toX : 7 - toX;
+    const perspectiveToY = perspective === "white" ? toY : 7 - toY;
+    const fromXCoord = rect.x + (perspectiveFromX + 0.5) * (rect.width / 8);
+    const fromYCoord = rect.y + (perspectiveFromY + 0.5) * (rect.height / 8);
+    const toXCoord = rect.x + (perspectiveToX + 0.5) * (rect.width / 8);
+    const toYCoord = rect.y + (perspectiveToY + 0.5) * (rect.height / 8);
+    ctx.save();
     ctx.globalAlpha = 0.5;
-    ctx.strokeStyle = "green";
-    ctx.strokeWidth = 10;
-    drawArrow(ctx, fromX, fromY, toX, toY);
-    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#8f8";
+    ctx.lineWidth = (0.1 * rect.width) / 8;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    drawArrow(
+      ctx,
+      fromXCoord,
+      fromYCoord,
+      toXCoord,
+      toYCoord,
+      0.025 * rect.width,
+    );
+    ctx.restore();
   });
 }
 
@@ -260,11 +292,23 @@ function drawArrow(
   fromY: number,
   toX: number,
   toY: number,
+  headLength: number,
 ) {
   // draw the line
   ctx.beginPath();
   ctx.moveTo(fromX, fromY);
   ctx.lineTo(toX, toY);
+  // draw the triangle at the end
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  ctx.lineTo(
+    toX - headLength * Math.cos(angle - Math.PI / 6),
+    toY - headLength * Math.sin(angle - Math.PI / 6),
+  );
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(
+    toX - headLength * Math.cos(angle + Math.PI / 6),
+    toY - headLength * Math.sin(angle + Math.PI / 6),
+  );
   ctx.stroke();
 }
 
@@ -274,7 +318,7 @@ function drawMoveIndicators(
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
 ) {
-  const selectedRankAndFile = cursorToRankAndFile(selected);
+  const selectedRankAndFile = coordsToRankAndFile(selected);
   const selectedPiece = pieces.find(
     (piece) =>
       piece.rank === selectedRankAndFile.rank &&
@@ -333,10 +377,10 @@ function drawCooldowns(
   });
 }
 
-function cursorToRankAndFile(cursor: { x: number; y: number }) {
+function coordsToRankAndFile(coords: { x: number; y: number }) {
   return {
-    rank: 8 - cursor.y,
-    file: String.fromCharCode("a".charCodeAt(0) + cursor.x),
+    rank: 8 - coords.y,
+    file: String.fromCharCode("a".charCodeAt(0) + coords.x),
   };
 }
 
@@ -348,7 +392,7 @@ function drawSelected(
 ) {
   const pY = perspective === "white" ? selected.y : GRID_DIM - 1 - selected.y;
   const pX = perspective === "white" ? selected.x : GRID_DIM - 1 - selected.x;
-  ctx.globalAlpha = 0.5;
+  ctx.globalAlpha = 0.75;
   ctx.fillStyle = "#8f8";
   ctx.fillRect(
     rect.x + pX * (rect.width / GRID_DIM),

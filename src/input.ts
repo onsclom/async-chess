@@ -8,6 +8,7 @@ export const events: (
       type: "a"; // select piece, confirm move
       player: "left" | "right";
     }
+  // TODO: maybe just remove this and make "a" the only action?
   | {
       type: "b"; // cancel move
       player: "left" | "right";

@@ -10,7 +10,7 @@ x disallow illegal moves
   - allow restarting game maybe?
 x add auto promotion to queen
 - add controller support
-- add premoves
+x add premoves
 
 core stuff discovered while working on core stuff:
 x unselect if selected piece is taken
