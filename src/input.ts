@@ -70,9 +70,8 @@ let leftGamepadHistory;
 let rightGamepadHistory;
 export function detectGameControllerInputs() {
   const gamepads = navigator.getGamepads();
-  // JUICE BUTTON: 0-3
-  // DPAD: 12 - 15
-  for (const gamepad of gamepads) {
+  // shuffle gamepads so that we don't always favor player 1
+  for (const gamepad of shuffle([...gamepads])) {
     if (!gamepad) return;
     const player = gamepad.index === 0 ? "left" : "right";
 
@@ -116,6 +115,13 @@ export function detectGameControllerInputs() {
     if (player === "left") leftGamepadHistory = controllerSnapshot;
     else rightGamepadHistory = controllerSnapshot;
   }
+}
 
-  // gamepadHistory = [...gamepads];
+function shuffle<T>(items: T[]) {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }

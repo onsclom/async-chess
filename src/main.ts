@@ -42,8 +42,14 @@ function gameStep() {
       );
     }
     const frameTime = `${total.toFixed(1)}ms / ${BUDGET.toFixed(1)}ms (${((100 * (endTime - newTime)) / BUDGET).toFixed(1)}%)`;
+    ctx.textBaseline = "top";
     ctx.fillStyle = "red";
     ctx.font = "20px sans-serif";
-    ctx.fillText(frameTime, 10, 20);
+    ctx.fillText(frameTime, 10, 10);
+
+    ctx.save();
+    ctx.textAlign = "right";
+    ctx.fillText("alpha v0.0.1", canvas.getBoundingClientRect().width - 10, 10);
+    ctx.restore();
   }
 }

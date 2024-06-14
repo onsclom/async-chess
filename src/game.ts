@@ -81,6 +81,7 @@ export function updateAndDraw(
     ctx.save();
     ctx.fillStyle = "red";
     ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.font = "bold 48px sans-serif";
     ctx.fillText(`${num}`, DRAWING_RECT.width / 2, DRAWING_RECT.height / 2);
     ctx.restore();
