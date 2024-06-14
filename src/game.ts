@@ -18,6 +18,7 @@ const pieces = structuredClone(startingPieces).map((piece) => ({
   ...piece,
   cooldownRemaining: 0,
   premove: null as null | { rank: number; file: string },
+  animated: { x: piece.file.charCodeAt(0) - 97, y: piece.rank - 1 },
 }));
 const playerLeft = {
   cursor: { x: 4, y: 7, animated: { x: 4, y: 7 } },
@@ -90,6 +91,7 @@ export function updateAndDraw(
     ctx.save();
     ctx.fillStyle = "red";
     ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.font = "bold 48px sans-serif";
     ctx.fillText(
       `${winner.toUpperCase()} WINS!`,
@@ -122,28 +124,55 @@ function updateSelections(dt: number) {
     }
   }
 
-  const speed = dt * 0.02;
   [playerLeft.cursor, playerRight.cursor].forEach((cursor) => {
-    cursor.animated.x = (1 - speed) * cursor.animated.x + speed * cursor.x;
-    cursor.animated.y = (1 - speed) * cursor.animated.y + speed * cursor.y;
-
-    const distanceToTarget = Math.hypot(
-      cursor.x - cursor.animated.x,
-      cursor.y - cursor.animated.y,
+    const { x, y } = animatedBoardCoords(
+      cursor.animated.x,
+      cursor.animated.y,
+      cursor.x,
+      cursor.y,
+      dt,
     );
-    const minDistance = 3.5; // squares away
-    if (distanceToTarget > minDistance) {
-      const percentToTravel = (distanceToTarget - minDistance) / minDistance;
-      cursor.animated.x =
-        cursor.x * percentToTravel + cursor.animated.x * (1 - percentToTravel);
-      cursor.animated.y =
-        cursor.y * percentToTravel + cursor.animated.y * (1 - percentToTravel);
-    }
+    cursor.animated.x = x;
+    cursor.animated.y = y;
   });
+}
+
+function animatedBoardCoords(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  dt: number,
+) {
+  const speed = dt * 0.02;
+  let x = (1 - speed) * x1 + speed * x2;
+  let y = (1 - speed) * y1 + speed * y2;
+  const distanceToTarget = Math.hypot(x2 - x, y2 - y);
+  const minDistance = 3.5; // squares away
+  if (distanceToTarget > minDistance) {
+    const percentToTravel = (distanceToTarget - minDistance) / minDistance;
+    x = x2 * percentToTravel + x * (1 - percentToTravel);
+    y = y2 * percentToTravel + y * (1 - percentToTravel);
+  }
+  return { x, y };
 }
 
 function updatePieces(dt: number) {
   pieces.forEach((piece) => {
+    {
+      const y = piece.rank - 1;
+      const x = piece.file.charCodeAt(0) - "a".charCodeAt(0);
+      const animated = animatedBoardCoords(
+        piece.animated.x,
+        piece.animated.y,
+        x,
+        y,
+        dt,
+      );
+      piece.animated.x = animated.x;
+      piece.animated.y = animated.y;
+    }
+
     if (piece.cooldownRemaining) {
       piece.cooldownRemaining = Math.max(piece.cooldownRemaining - dt, 0);
       if (piece.cooldownRemaining === 0 && piece.premove) {
@@ -510,9 +539,12 @@ function drawPieces(
   pieces.forEach((piece) => {
     const x =
       perspective === "white"
-        ? piece.file.charCodeAt(0) - "a".charCodeAt(0)
-        : "h".charCodeAt(0) - piece.file.charCodeAt(0);
-    const y = perspective === "white" ? GRID_DIM - piece.rank : piece.rank - 1;
+        ? piece.animated.x
+        : GRID_DIM - 1 - piece.animated.x;
+    const y =
+      perspective === "white"
+        ? GRID_DIM - 1 - piece.animated.y
+        : piece.animated.y;
     ctx.drawImage(
       pieceImage(piece.type, piece.color),
       rect.x + x * (rect.width / GRID_DIM),

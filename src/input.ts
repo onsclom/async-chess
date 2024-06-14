@@ -8,9 +8,9 @@ export const events: (
       type: "a"; // select piece, confirm move
       player: "left" | "right";
     }
-  // TODO: maybe just remove this and make "a" the only action?
+  // TODO: make this x2 speed
   | {
-      type: "b"; // cancel move
+      type: "b";
       player: "left" | "right";
     }
 )[] = [];

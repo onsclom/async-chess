@@ -21,7 +21,7 @@ x cancel premoves as soon as they are illegal
 fancy but important fun stuff:
 - draw different move indicator for taking pieces
 - animations
-  - piece move animation
+  x piece move animation
   - piece death animation
 - sounds
 - title screen with some fun starting countdown?
@@ -42,5 +42,5 @@ june 14th
 
 things i wanna do:
 - sounds
-- animations
+x animations
 - UI for ready up and restart?
