@@ -35,11 +35,16 @@ export function updateAndDraw(
 ) {
   detectGameControllerInputs();
 
+  const kings = pieces.filter((piece) => piece.type === "king");
+  const winner = kings.length === 1 ? kings[0].color : null;
+
   // UPDATE
   ///////////////////
-  handleGameInput(events);
-  updatePieces(dt);
-  updateSelections(dt);
+  if (!winner) {
+    handleGameInput(events);
+    updatePieces(dt);
+    updateSelections(dt);
+  }
 
   // DRAW
   ///////////////////
@@ -60,6 +65,20 @@ export function updateAndDraw(
   drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT);
   drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
   drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
+
+  if (winner) {
+    // draw winner text
+    ctx.save();
+    ctx.fillStyle = "red";
+    ctx.textAlign = "center";
+    ctx.font = "bold 48px sans-serif";
+    ctx.fillText(
+      `${winner.toUpperCase()} WINS!`,
+      DRAWING_RECT.width / 2,
+      DRAWING_RECT.height / 2,
+    );
+    ctx.restore();
+  }
 }
 
 function updateSelections(dt: number) {
