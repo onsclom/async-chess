@@ -27,6 +27,7 @@ const playerRight = {
   cursor: { x: 4, y: 0, animated: { x: 4, y: 0 } },
   selected: null as null | { x: number; y: number },
 };
+let countdown = 3000;
 
 export function updateAndDraw(
   canvas: HTMLCanvasElement,
@@ -34,13 +35,18 @@ export function updateAndDraw(
   dt: number,
 ) {
   detectGameControllerInputs();
-
   const kings = pieces.filter((piece) => piece.type === "king");
   const winner = kings.length === 1 ? kings[0].color : null;
 
   // UPDATE
   ///////////////////
-  if (!winner) {
+  countdown = Math.max(countdown - dt, 0);
+  if (countdown) {
+    while (events.length) {
+      events.shift();
+    }
+  }
+  if (!winner && countdown === 0) {
     handleGameInput(events);
     updatePieces(dt);
     updateSelections(dt);
@@ -66,7 +72,19 @@ export function updateAndDraw(
   drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
   drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
 
-  if (winner) {
+  if (countdown) {
+    const num = Math.ceil(countdown / 1000);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, DRAWING_RECT.width, DRAWING_RECT.height);
+    ctx.globalAlpha = 1;
+    ctx.save();
+    ctx.fillStyle = "red";
+    ctx.textAlign = "center";
+    ctx.font = "bold 48px sans-serif";
+    ctx.fillText(`${num}`, DRAWING_RECT.width / 2, DRAWING_RECT.height / 2);
+    ctx.restore();
+  } else if (winner) {
     // draw winner text
     ctx.save();
     ctx.fillStyle = "red";
