@@ -231,11 +231,14 @@ function handleInputs() {
   for (const { player, playerInput, playerColor } of playersInfo) {
     const dirActions = ["left", "up", "right", "down"] as const;
     const mirror = player === playerLeft ? 1 : -1;
+    const multiplier = playerInput.actionsDown.has("b") ? 2 : 1;
     for (const action of dirActions) {
       const dir = DIRS[action];
       if (playerInput.actionsJustPressed.has(action)) {
-        player.cursor.x = (player.cursor.x + dir.x * mirror + 8) % 8;
-        player.cursor.y = (player.cursor.y + dir.y * mirror + 8) % 8;
+        player.cursor.x =
+          (player.cursor.x + dir.x * mirror * multiplier + 8) % 8;
+        player.cursor.y =
+          (player.cursor.y + dir.y * mirror * multiplier + 8) % 8;
       }
     }
     if (playerInput.actionsJustPressed.has("a")) {

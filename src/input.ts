@@ -15,7 +15,7 @@ const LEFT_KEYBOARD_MAP = {
   w: "up",
   s: "down",
   q: "a",
-  shift: "b",
+  e: "b",
 } as const;
 
 export const leftInput = {
