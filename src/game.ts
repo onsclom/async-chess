@@ -1,16 +1,10 @@
 import { pieceImage } from "./piece-image";
 import { startingPieces } from "./starting-pieces";
-import { detectGameControllerInputs, events } from "./input";
+import { updateInput, leftInput, rightInput } from "./input";
 import { legalMoves, moveIsLegal } from "./move-rules";
 
-const DIRS = {
-  up: { x: 0, y: -1 },
-  down: { x: 0, y: 1 },
-  left: { x: -1, y: 0 },
-  right: { x: 1, y: 0 },
-};
-const DARK_COLOR = "#999";
 const PIECE_COOLDOWN = 10000;
+const DARK_COLOR = "#999";
 
 // STATE
 ///////////////////
@@ -35,20 +29,16 @@ export function updateAndDraw(
   ctx: CanvasRenderingContext2D,
   dt: number,
 ) {
-  detectGameControllerInputs();
-  const kings = pieces.filter((piece) => piece.type === "king");
-  const winner = kings.length === 1 ? kings[0].color : null;
-
   // UPDATE
   ///////////////////
+  updateInput();
+
+  const kings = pieces.filter((piece) => piece.type === "king");
+  const winner = kings.length === 1 ? kings[0].color : null;
   countdown = Math.max(countdown - dt, 0);
-  if (countdown) {
-    while (events.length) {
-      events.shift();
-    }
-  }
+
   if (!winner && countdown === 0) {
-    handleGameInput(events);
+    handleInputs();
     updatePieces(dt);
     updateSelections(dt);
   }
@@ -87,7 +77,6 @@ export function updateAndDraw(
     ctx.fillText(`${num}`, DRAWING_RECT.width / 2, DRAWING_RECT.height / 2);
     ctx.restore();
   } else if (winner) {
-    // draw winner text
     ctx.save();
     ctx.fillStyle = "red";
     ctx.textAlign = "center";
@@ -218,80 +207,107 @@ function calculateBoardRects(DRAWING_RECT: DOMRect) {
   return { BOARD_1_RECT, BOARD_2_RECT };
 }
 
-function handleGameInput(eventQueue: typeof events) {
-  while (eventQueue.length) {
-    const event = eventQueue.shift()!;
-    const player = event.player === "left" ? playerLeft : playerRight;
-    const playerColor = event.player === "left" ? "white" : "black";
-    switch (event.type) {
-      case "move": {
-        const dir = DIRS[event.dir];
-        const dy = event.player === "left" ? 1 : -1;
-        const dx = event.player === "left" ? 1 : -1;
-        player.cursor.x = (player.cursor.x + dx * dir.x + 8) % 8;
-        player.cursor.y = (player.cursor.y + dy * dir.y + 8) % 8;
-        break;
-      }
-      case "a": {
-        if (!player.selected) {
-          // handle "a" with no selection
-          const rankAndFile = coordsToRankAndFile(player.cursor);
-          const piece = pieces.find(
-            (piece) =>
-              piece.rank === rankAndFile.rank &&
-              piece.file === rankAndFile.file,
-          );
-          if (!piece || piece.color !== playerColor) continue;
-          player.selected = { x: player.cursor.x, y: player.cursor.y };
-          piece.premove = null;
-        } else {
-          if (
-            player.selected.x === player.cursor.x &&
-            player.selected.y === player.cursor.y
-          ) {
-            player.selected = null;
-            continue;
-          }
+const DIRS = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+};
 
-          const selectedRankAndFile = coordsToRankAndFile(player.selected);
-          const selectedPiece = pieces.find(
-            (piece) =>
-              piece.rank === selectedRankAndFile.rank &&
-              piece.file === selectedRankAndFile.file,
-          );
-          if (!selectedPiece) continue;
-          if (selectedPiece.color !== playerColor) continue;
-          const pieceUnderCursor = pieces.find(
-            (piece) =>
-              piece.rank === coordsToRankAndFile(player.cursor).rank &&
-              piece.file === coordsToRankAndFile(player.cursor).file,
-          );
-          if (pieceUnderCursor && pieceUnderCursor.color === playerColor) {
-            player.selected = { x: player.cursor.x, y: player.cursor.y };
-            continue;
-          }
-          if (selectedPiece.cooldownRemaining) {
-            const legal = moveIsLegal(
-              selectedPiece,
-              coordsToRankAndFile(player.cursor),
-              pieces,
-            );
-            if (legal) {
-              const rankAndFile = coordsToRankAndFile(player.cursor);
-              selectedPiece.premove = rankAndFile;
-            }
-            player.selected = null;
-            continue;
-          }
-          attemptMove(selectedPiece, coordsToRankAndFile(player.cursor));
-          player.selected = null;
-        }
-        break;
-      }
-      default: {
-        throw new Error("Unknown event type");
+function handleInputs() {
+  // shuffle so we don't always prio 1st player
+  const playersInfo = shuffled([
+    {
+      player: playerLeft,
+      playerInput: leftInput,
+      playerColor: "white",
+    },
+    {
+      player: playerRight,
+      playerInput: rightInput,
+      playerColor: "black",
+    },
+  ] as const);
+  for (const { player, playerInput, playerColor } of playersInfo) {
+    const dirActions = ["left", "up", "right", "down"] as const;
+    const mirror = player === playerLeft ? 1 : -1;
+    for (const action of dirActions) {
+      const dir = DIRS[action];
+      if (playerInput.actionsJustPressed.has(action)) {
+        player.cursor.x = (player.cursor.x + dir.x * mirror + 8) % 8;
+        player.cursor.y = (player.cursor.y + dir.y * mirror + 8) % 8;
       }
     }
+    if (playerInput.actionsJustPressed.has("a")) {
+      handleA(player, playerColor);
+    }
+  }
+}
+
+function shuffled<T>(items: T[]) {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function handleA(
+  player: typeof playerLeft | typeof playerRight,
+  playerColor: "white" | "black",
+) {
+  if (!player.selected) {
+    // handle "a" with no selection
+    const rankAndFile = coordsToRankAndFile(player.cursor);
+    const piece = pieces.find(
+      (piece) =>
+        piece.rank === rankAndFile.rank && piece.file === rankAndFile.file,
+    );
+    if (!piece || piece.color !== playerColor) return;
+    player.selected = { x: player.cursor.x, y: player.cursor.y };
+    piece.premove = null;
+  } else {
+    if (
+      player.selected.x === player.cursor.x &&
+      player.selected.y === player.cursor.y
+    ) {
+      player.selected = null;
+      return;
+    }
+
+    const selectedRankAndFile = coordsToRankAndFile(player.selected);
+    const selectedPiece = pieces.find(
+      (piece) =>
+        piece.rank === selectedRankAndFile.rank &&
+        piece.file === selectedRankAndFile.file,
+    );
+    if (!selectedPiece) return;
+    if (selectedPiece.color !== playerColor) return;
+    const pieceUnderCursor = pieces.find(
+      (piece) =>
+        piece.rank === coordsToRankAndFile(player.cursor).rank &&
+        piece.file === coordsToRankAndFile(player.cursor).file,
+    );
+    if (pieceUnderCursor && pieceUnderCursor.color === playerColor) {
+      player.selected = { x: player.cursor.x, y: player.cursor.y };
+      return;
+    }
+    if (selectedPiece.cooldownRemaining) {
+      const legal = moveIsLegal(
+        selectedPiece,
+        coordsToRankAndFile(player.cursor),
+        pieces,
+      );
+      if (legal) {
+        const rankAndFile = coordsToRankAndFile(player.cursor);
+        selectedPiece.premove = rankAndFile;
+      }
+      player.selected = null;
+      return;
+    }
+    attemptMove(selectedPiece, coordsToRankAndFile(player.cursor));
+    player.selected = null;
   }
 }
 

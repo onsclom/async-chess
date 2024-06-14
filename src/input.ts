@@ -1,127 +1,86 @@
-export const events: (
-  | {
-      type: "move";
-      player: "left" | "right";
-      dir: "up" | "down" | "left" | "right";
-    }
-  | {
-      type: "a"; // select piece, confirm move
-      player: "left" | "right";
-    }
-  // TODO: make this x2 speed
-  | {
-      type: "b";
-      player: "left" | "right";
-    }
-)[] = [];
+const actions = ["left", "right", "up", "down", "a", "b"] as const;
 
-document.onkeydown = (e) => {
-  switch (e.key) {
-    // left is WASD
-    case "w":
-      events.push({ type: "move", player: "left", dir: "up" });
-      break;
-    case "a":
-      events.push({ type: "move", player: "left", dir: "left" });
-      break;
-    case "s":
-      events.push({ type: "move", player: "left", dir: "down" });
-      break;
-    case "d":
-      events.push({ type: "move", player: "left", dir: "right" });
-      break;
-    case "q":
-      events.push({ type: "a", player: "left" });
-      break;
-    case "e":
-      events.push({ type: "b", player: "left" });
-      break;
-    // right is ARROW KEYS
-    case "ArrowUp":
-      events.push({ type: "move", player: "right", dir: "up" });
-      break;
-    case "ArrowLeft":
-      events.push({ type: "move", player: "right", dir: "left" });
-      break;
-    case "ArrowDown":
-      events.push({ type: "move", player: "right", dir: "down" });
-      break;
-    case "ArrowRight":
-      events.push({ type: "move", player: "right", dir: "right" });
-      break;
-    case "/":
-      events.push({ type: "a", player: "right" });
-      break;
-    case "Shift":
-      events.push({ type: "b", player: "right" });
-      break;
-  }
+const RIGHT_KEYBOARD_MAP = {
+  ArrowLeft: "left",
+  ArrowRight: "right",
+  ArrowUp: "up",
+  ArrowDown: "down",
+  "/": "a",
+  ".": "b",
+} as const;
+
+const LEFT_KEYBOARD_MAP = {
+  a: "left",
+  d: "right",
+  w: "up",
+  s: "down",
+  q: "a",
+  shift: "b",
+} as const;
+
+export const leftInput = {
+  actionsDown: new Set<(typeof actions)[number]>(),
+  actionsJustPressed: new Set<(typeof actions)[number]>(),
+  keyboardMap: LEFT_KEYBOARD_MAP,
+  controllerNum: 0 as const,
 };
 
-let gamepads;
-let gamepadHistory;
-window.addEventListener("gamepadconnected", (e) => {
-  gamepads = navigator.getGamepads();
-  const gamepad1 = gamepads[0];
-  const gamepad2 = gamepads[1];
-});
+export const rightInput = {
+  actionsDown: new Set<(typeof actions)[number]>(),
+  actionsJustPressed: new Set<(typeof actions)[number]>(),
+  keyboardMap: RIGHT_KEYBOARD_MAP,
+  controllerNum: 1 as const,
+};
 
-let leftGamepadHistory;
-let rightGamepadHistory;
-export function detectGameControllerInputs() {
+export let keysDown = new Set<string>();
+document.onkeydown = (e) => keysDown.add(e.key);
+document.onkeyup = (e) => keysDown.delete(e.key);
+
+const CONTROLLER_MAP = [
+  [12, "up"],
+  [13, "down"],
+  [14, "left"],
+  [15, "right"],
+  [0, "a"],
+  [1, "b"],
+] as const;
+
+export function updateInput() {
   const gamepads = navigator.getGamepads();
-  // shuffle gamepads so that we don't always favor player 1
-  for (const gamepad of shuffle([...gamepads])) {
-    if (!gamepad) return;
-    const player = gamepad.index === 0 ? "left" : "right";
 
-    const importantButtons = [0, 1, 2, 3, 12, 13, 14, 15];
-    const controllerSnapshot = Object.fromEntries(
-      importantButtons.map((buttonIndex) => [
-        buttonIndex,
-        gamepad.buttons[buttonIndex].pressed,
-      ]),
-    );
+  const playerInputs = [leftInput, rightInput];
+  for (const {
+    actionsDown,
+    actionsJustPressed,
+    keyboardMap,
+    controllerNum,
+  } of playerInputs) {
+    actionsJustPressed.clear();
 
-    const directionMap = {
-      12: "up",
-      13: "down",
-      14: "left",
-      15: "right",
-    };
-
-    const history =
-      player === "left" ? leftGamepadHistory : rightGamepadHistory;
-    for (const button of importantButtons) {
-      if (controllerSnapshot[button]) {
-        if (!history || !history[button]) {
-          // button 0-3 it's an a press
-          if ([0, 1, 2, 3].includes(button)) {
-            events.push({ type: "a", player });
-          }
-
-          // dpad
-          if (directionMap[button]) {
-            events.push({
-              type: "move",
-              player,
-              dir: directionMap[button],
-            });
-          }
+    const newActionsDown = new Set<(typeof actions)[number]>();
+    for (const [key, button] of Object.entries(keyboardMap)) {
+      if (keysDown.has(key)) {
+        newActionsDown.add(button);
+      }
+    }
+    const playerGamepad = gamepads[controllerNum];
+    if (playerGamepad) {
+      for (const [button, action] of CONTROLLER_MAP) {
+        if (playerGamepad.buttons[button].pressed) {
+          newActionsDown.add(action);
         }
       }
     }
 
-    if (player === "left") leftGamepadHistory = controllerSnapshot;
-    else rightGamepadHistory = controllerSnapshot;
-  }
-}
+    for (const action of actions) {
+      if (!actionsDown.has(action) && newActionsDown.has(action)) {
+        actionsJustPressed.add(action);
+      }
+    }
 
-function shuffle<T>(items: T[]) {
-  const shuffled = [...items];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    actionsDown.clear();
+    for (const action of newActionsDown) {
+      actionsDown.add(action);
+    }
   }
-  return shuffled;
 }
