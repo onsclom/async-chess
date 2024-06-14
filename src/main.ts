@@ -37,9 +37,9 @@ function gameStep() {
     const total = endTime - newTime;
     if (total > maxTime) {
       maxTime = total;
-      console.log(
-        `Max frame time: ${maxTime.toFixed(1)}ms, (${(100 * maxTime) / BUDGET}%)`,
-      );
+      // console.log(
+      //   `Max frame time: ${maxTime.toFixed(1)}ms, (${(100 * maxTime) / BUDGET}%)`,
+      // );
     }
     const frameTime = `${total.toFixed(1)}ms / ${BUDGET.toFixed(1)}ms (${((100 * (endTime - newTime)) / BUDGET).toFixed(1)}%)`;
     ctx.fillStyle = "red";

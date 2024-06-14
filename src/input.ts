@@ -57,3 +57,65 @@ document.onkeydown = (e) => {
       break;
   }
 };
+
+let gamepads;
+let gamepadHistory;
+window.addEventListener("gamepadconnected", (e) => {
+  gamepads = navigator.getGamepads();
+  const gamepad1 = gamepads[0];
+  const gamepad2 = gamepads[1];
+});
+
+let leftGamepadHistory;
+let rightGamepadHistory;
+export function detectGameControllerInputs() {
+  const gamepads = navigator.getGamepads();
+  // JUICE BUTTON: 0-3
+  // DPAD: 12 - 15
+  for (const gamepad of gamepads) {
+    if (!gamepad) return;
+    const player = gamepad.index === 0 ? "left" : "right";
+
+    const importantButtons = [0, 1, 2, 3, 12, 13, 14, 15];
+    const controllerSnapshot = Object.fromEntries(
+      importantButtons.map((buttonIndex) => [
+        buttonIndex,
+        gamepad.buttons[buttonIndex].pressed,
+      ]),
+    );
+
+    const directionMap = {
+      12: "up",
+      13: "down",
+      14: "left",
+      15: "right",
+    };
+
+    const history =
+      player === "left" ? leftGamepadHistory : rightGamepadHistory;
+    for (const button of importantButtons) {
+      if (controllerSnapshot[button]) {
+        if (!history || !history[button]) {
+          // button 0-3 it's an a press
+          if ([0, 1, 2, 3].includes(button)) {
+            events.push({ type: "a", player });
+          }
+
+          // dpad
+          if (directionMap[button]) {
+            events.push({
+              type: "move",
+              player,
+              dir: directionMap[button],
+            });
+          }
+        }
+      }
+    }
+
+    if (player === "left") leftGamepadHistory = controllerSnapshot;
+    else rightGamepadHistory = controllerSnapshot;
+  }
+
+  // gamepadHistory = [...gamepads];
+}

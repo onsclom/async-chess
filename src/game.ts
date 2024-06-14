@@ -1,6 +1,6 @@
 import { pieceImage } from "./piece-image";
 import { startingPieces } from "./starting-pieces";
-import { events } from "./input";
+import { detectGameControllerInputs, events } from "./input";
 import { legalMoves, moveIsLegal } from "./move-rules";
 
 const DIRS = {
@@ -33,6 +33,8 @@ export function updateAndDraw(
   ctx: CanvasRenderingContext2D,
   dt: number,
 ) {
+  detectGameControllerInputs();
+
   // UPDATE
   ///////////////////
   handleGameInput(events);
