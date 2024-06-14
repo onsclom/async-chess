@@ -1,3 +1,5 @@
+// TODO: maybe i can just import images using vite?
+
 const PIECE_LETTERS = ["b", "k", "n", "p", "q", "r"];
 const BLACK_SVGS = PIECE_LETTERS.map(
   (letter) => `/pieces/Chess_${letter}dt45.svg`,

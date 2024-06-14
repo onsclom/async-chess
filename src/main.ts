@@ -46,12 +46,11 @@ function gameStep() {
     ctx.fillStyle = "red";
     ctx.font = "20px sans-serif";
     ctx.fillText(
-      `Max frame time: ${maxTime.toFixed(1)}ms, (${Math.round((100 * maxTime) / BUDGET)}%)`,
+      `max frame time: ${maxTime.toFixed(1)}ms, (${Math.round((100 * maxTime) / BUDGET)}%)`,
       10,
       10,
     );
-    ctx.fillText(`Dropped frames: ${droppedFrames}`, 10, 40);
-
+    ctx.fillText(`dropped frames: ${droppedFrames}`, 10, 40);
     ctx.save();
     ctx.textAlign = "right";
     ctx.fillText(

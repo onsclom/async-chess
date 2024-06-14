@@ -1,3 +1,3 @@
 # async-chess
 
-Local multiplayer real-time chess.
+chess... but without turns!

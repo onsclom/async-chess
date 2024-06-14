@@ -2,6 +2,7 @@ import { pieceImage } from "./piece-image";
 import { startingPieces } from "./starting-pieces";
 import { updateInput, leftInput, rightInput } from "./input";
 import { legalMoves, moveIsLegal } from "./move-rules";
+import { playMoveSound, playSound } from "./sounds";
 
 const PIECE_COOLDOWN = 10000;
 const DARK_COLOR = "#999";
@@ -337,6 +338,9 @@ function attemptMove(
   );
   if (pieceUnderTarget) {
     pieces.splice(pieces.indexOf(pieceUnderTarget), 1);
+    playSound("capture");
+  } else {
+    playSound("move");
   }
   piece.rank = target.rank;
   piece.file = target.file;

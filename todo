@@ -33,7 +33,7 @@ future stuff:
 - consider using seb's premove logic
 
 idea:
-- maybe make b allow x2 movement
+x maybe make b allow x2 movement
 - 2v2 TEAMS hype
 
 ---
@@ -44,3 +44,6 @@ things i wanna do:
 - sounds
 x animations
 - UI for ready up and restart?
+
+- make sure piece z index makes sense for animations (pieces moved recently should be on top)
+- maybe change cooldown visual to be pie chart?
