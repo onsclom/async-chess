@@ -232,7 +232,7 @@ export function moveIsLegal(
     type: "pawn" | "rook" | "knight" | "bishop" | "queen" | "king";
   },
   target: { rank: number; file: string },
-  boardPieces: typeof import("./starting-pieces").startingPieces,
+  boardPieces: typeof import("./state").startingPieces,
 ) {
   return legalMoves(piece, boardPieces).some((move) => {
     if (!move) return false;

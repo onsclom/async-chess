@@ -67,7 +67,7 @@ function gameStep() {
   }
 }
 
-// i don't completely understand this... but it gives me HMR!
+// i don't completely understand this... but it works!
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
     cancelAnimationFrame(raf);

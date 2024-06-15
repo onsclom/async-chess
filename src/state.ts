@@ -1,3 +1,4 @@
+// game state is own module to allow HMR
 export const startingPieces: {
   type: "rook" | "knight" | "bishop" | "queen" | "king" | "pawn";
   color: "white" | "black";
@@ -39,3 +40,29 @@ export const startingPieces: {
   { type: "pawn", color: "black", rank: 7, file: "g" },
   { type: "pawn", color: "black", rank: 7, file: "h" },
 ];
+
+const initialGameState = {
+  state: "readyUp" as "readyUp" | "playing",
+  pieces: structuredClone(startingPieces).map((piece) => ({
+    ...piece,
+    cooldownRemaining: 0,
+    premove: null as null | { rank: number; file: string },
+    animated: { x: piece.file.charCodeAt(0) - 97, y: piece.rank - 1 },
+  })),
+  playerLeft: {
+    cursor: { x: 4, y: 7, animated: { x: 4, y: 7 } },
+    selected: null as null | { x: number; y: number },
+  },
+  playerRight: {
+    cursor: { x: 4, y: 0, animated: { x: 4, y: 0 } },
+    selected: null as null | { x: number; y: number },
+  },
+  countdown: 3000,
+  gameWasOver: false,
+};
+
+export let gameState = structuredClone(initialGameState);
+
+export function resetGameState() {
+  gameState = structuredClone(initialGameState);
+}

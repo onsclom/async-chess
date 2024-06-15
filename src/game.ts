@@ -1,34 +1,14 @@
 import { pieceImage } from "./piece-image";
-import { startingPieces } from "./starting-pieces";
 import { rightInput, leftInput } from "./input";
 import { legalMoves, moveIsLegal } from "./move-rules";
 import { playSound } from "./sound";
+import { gameState, resetGameState } from "./state";
 
 const PIECE_COOLDOWN = 10000;
 const DARK_COLOR = "#999";
 
 // STATE
 ///////////////////
-const initialGameState = {
-  state: "readyUp" as "readyUp" | "playing",
-  pieces: structuredClone(startingPieces).map((piece) => ({
-    ...piece,
-    cooldownRemaining: 0,
-    premove: null as null | { rank: number; file: string },
-    animated: { x: piece.file.charCodeAt(0) - 97, y: piece.rank - 1 },
-  })),
-  playerLeft: {
-    cursor: { x: 4, y: 7, animated: { x: 4, y: 7 } },
-    selected: null as null | { x: number; y: number },
-  },
-  playerRight: {
-    cursor: { x: 4, y: 0, animated: { x: 4, y: 0 } },
-    selected: null as null | { x: number; y: number },
-  },
-  countdown: 3000,
-  gameWasOver: false,
-};
-let gameState = structuredClone(initialGameState);
 
 export function updateAndDraw(
   canvas: HTMLCanvasElement,
@@ -56,9 +36,7 @@ export function updateAndDraw(
   if (winner && !gameState.gameWasOver) {
     gameState.gameWasOver = true;
     pieces.forEach((piece) => (piece.premove = null));
-    setTimeout(() => {
-      gameState = structuredClone(initialGameState);
-    }, 3000);
+    setTimeout(() => resetGameState(), 3000);
   }
 
   // DRAW
