@@ -36,7 +36,7 @@ export function updateAndDraw(
   if (winner && !gameState.gameWasOver) {
     gameState.gameWasOver = true;
     pieces.forEach((piece) => (piece.premove = null));
-    setTimeout(() => resetGameState(), 3000);
+    setTimeout(() => resetGameState(), 5000);
   }
 
   // DRAW
@@ -203,7 +203,9 @@ function animatedBoardCoords(
 }
 
 function updatePieces(dt: number, pieces: typeof gameState.pieces) {
-  pieces.forEach((piece) => {
+  // shuffle pieces to make evaluation of premoves more fair
+  const shuffledPieces = shuffled(pieces);
+  shuffledPieces.forEach((piece) => {
     if (piece.cooldownRemaining) {
       piece.cooldownRemaining = Math.max(piece.cooldownRemaining - dt, 0);
       if (piece.cooldownRemaining === 0 && piece.premove) {
@@ -230,6 +232,7 @@ function updatePieces(dt: number, pieces: typeof gameState.pieces) {
       );
       piece.animated.x = animated.x;
       piece.animated.y = animated.y;
+      piece.animated.scale += (1 - piece.animated.scale) * dt * 0.02;
     }
   });
 }
@@ -299,6 +302,8 @@ function handleInputs(
           (player.cursor.x + dir.x * mirror * multiplier + 8) % 8;
         player.cursor.y =
           (player.cursor.y + dir.y * mirror * multiplier + 8) % 8;
+        // turns out this is pretty obnoxious lol
+        // playSound("step");
       }
     }
     if (playerInput.actionsJustPressed.has("a")) {
@@ -376,14 +381,7 @@ function handleA(
 }
 
 function attemptMove(
-  piece: {
-    rank: number;
-    file: string;
-    color: "white" | "black";
-    type: "pawn" | "rook" | "knight" | "bishop" | "queen" | "king";
-    cooldownRemaining: number;
-    premove: { rank: number; file: string } | null;
-  },
+  piece: (typeof gameState.pieces)[number],
   target: {
     rank: number;
     file: string;
@@ -406,6 +404,7 @@ function attemptMove(
   piece.rank = target.rank;
   piece.file = target.file;
   piece.cooldownRemaining = PIECE_COOLDOWN;
+  piece.animated.scale = 1.5;
   piece.premove = null;
   // if the piece is a pawn, check for promotion
   if (piece.type === "pawn") {
@@ -438,7 +437,7 @@ function drawPremoves(
     const toXCoord = rect.x + (perspectiveToX + 0.5) * (rect.width / 8);
     const toYCoord = rect.y + (perspectiveToY + 0.5) * (rect.height / 8);
     ctx.save();
-    ctx.globalAlpha = 0.5;
+    ctx.globalAlpha = 0.75;
     ctx.strokeStyle = "#8f8";
     ctx.lineWidth = (0.1 * rect.width) / 8;
     ctx.lineCap = "round";
@@ -686,12 +685,17 @@ function drawPieces(
       perspective === "white"
         ? GRID_DIM - 1 - piece.animated.y
         : piece.animated.y;
+    const scale = piece.animated.scale;
+    const x0 = rect.x + x * (rect.width / GRID_DIM);
+    const y0 = rect.y + y * (rect.height / GRID_DIM);
+    const x1 = rect.x + (x + 1) * (rect.width / GRID_DIM);
+    const y1 = rect.y + (y + 1) * (rect.height / GRID_DIM);
     ctx.drawImage(
       pieceImage(piece.type, piece.color),
-      rect.x + x * (rect.width / GRID_DIM),
-      rect.y + y * (rect.height / GRID_DIM),
-      rect.width / GRID_DIM,
-      rect.height / GRID_DIM,
+      x0 + (x1 - x0) / 2 - ((x1 - x0) / 2) * scale,
+      y0 + (y1 - y0) / 2 - ((y1 - y0) / 2) * scale,
+      (x1 - x0) * scale,
+      (y1 - y0) * scale,
     );
   });
 }

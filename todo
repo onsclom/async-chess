@@ -57,13 +57,19 @@ x animations
 june 15th
 
 things i'd like to do today:
-- make loading indicator circles
+- add death animations
+- make loading indicators circular
 x show enemy cursor and selection
-- add scale animation to pieces
-- make different move indicators for taking pieces
+x add scale animation to pieces
+x make different move indicators for taking pieces
 - add sounds to more things:
   - countdown
   - select
   - deselect
   - game over
 - add castling
+- add button repeat
+
+ideas:
+- checks put all pieces on cool downs except for pieces that can prevent the check
+- taking pieces could help lower cooldowns ?
