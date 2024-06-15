@@ -4,10 +4,10 @@ x allow capturing pieces
 x allow cancelling selections
 x add cooldowns
 x disallow illegal moves
-- add win condition: taking opponent's king
+x add win condition: taking opponent's king
   x stop taking inputs
-  - show win screen
-  - allow restarting game maybe?
+  x show win screen
+  x allow restarting game maybe?
 x add auto promotion to queen
 x add controller support
 x add premoves
@@ -47,3 +47,7 @@ x animations
 
 - make sure piece z index makes sense for animations (pieces moved recently should be on top)
 - maybe change cooldown visual to be pie chart?
+
+- implement key repeat for directions!
+
+- maybe checks actually put all pieces on cool down except for pieces that can prevent the check?

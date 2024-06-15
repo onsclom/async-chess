@@ -1,47 +1,79 @@
 import { pieceImage } from "./piece-image";
 import { startingPieces } from "./starting-pieces";
-import { updateInput, leftInput, rightInput } from "./input";
+import { updateInput, rightInput, leftInput } from "./input";
 import { legalMoves, moveIsLegal } from "./move-rules";
-import { playMoveSound, playSound } from "./sounds";
+import { playSound } from "./sound";
 
 const PIECE_COOLDOWN = 10000;
 const DARK_COLOR = "#999";
 
 // STATE
 ///////////////////
-const pieces = structuredClone(startingPieces).map((piece) => ({
-  ...piece,
-  cooldownRemaining: 0,
-  premove: null as null | { rank: number; file: string },
-  animated: { x: piece.file.charCodeAt(0) - 97, y: piece.rank - 1 },
-}));
-const playerLeft = {
-  cursor: { x: 4, y: 7, animated: { x: 4, y: 7 } },
-  selected: null as null | { x: number; y: number },
+const initialGameState = {
+  state: "readyUp" as "readyUp" | "playing",
+  pieces: structuredClone(startingPieces).map((piece) => ({
+    ...piece,
+    cooldownRemaining: 0,
+    premove: null as null | { rank: number; file: string },
+    animated: { x: piece.file.charCodeAt(0) - 97, y: piece.rank - 1 },
+  })),
+  playerLeft: {
+    cursor: { x: 4, y: 7, animated: { x: 4, y: 7 } },
+    selected: null as null | { x: number; y: number },
+  },
+  playerRight: {
+    cursor: { x: 4, y: 0, animated: { x: 4, y: 0 } },
+    selected: null as null | { x: number; y: number },
+  },
+  countdown: 3000,
+  gameWasOver: false,
 };
-const playerRight = {
-  cursor: { x: 4, y: 0, animated: { x: 4, y: 0 } },
-  selected: null as null | { x: number; y: number },
-};
-let countdown = 3000;
+let gameState = structuredClone(initialGameState);
 
 export function updateAndDraw(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   dt: number,
 ) {
+  updateInput();
+  if (gameState.state === "readyUp") {
+    redCenteredLines(
+      ctx,
+      [
+        `hold (a) to start`,
+        ``,
+        `player 1 ${leftInput.actionsDown.has("a") ? "✔️" : "❌"}`,
+        `player 2 ${rightInput.actionsDown.has("a") ? "✔️" : "❌"}`,
+      ],
+      canvas.getBoundingClientRect(),
+      48,
+    );
+
+    if (leftInput.actionsDown.has("a") && rightInput.actionsDown.has("a")) {
+      gameState.state = "playing";
+    } else {
+      return;
+    }
+  }
+
+  const { pieces, playerLeft, playerRight } = gameState;
   // UPDATE
   ///////////////////
-  updateInput();
-
   const kings = pieces.filter((piece) => piece.type === "king");
   const winner = kings.length === 1 ? kings[0].color : null;
-  countdown = Math.max(countdown - dt, 0);
+  gameState.countdown = Math.max(gameState.countdown - dt, 0);
 
-  if (!winner && countdown === 0) {
-    handleInputs();
-    updatePieces(dt);
-    updateSelections(dt);
+  if (!winner && gameState.countdown === 0) {
+    handleInputs(playerLeft, playerRight, pieces);
+  }
+  updateSelections(dt, playerLeft, playerRight, pieces);
+  updatePieces(dt, pieces);
+  if (winner && !gameState.gameWasOver) {
+    gameState.gameWasOver = true;
+    pieces.forEach((piece) => (piece.premove = null));
+    setTimeout(() => {
+      gameState = structuredClone(initialGameState);
+    }, 3000);
   }
 
   // DRAW
@@ -53,46 +85,62 @@ export function updateAndDraw(
   drawBoardBackground(ctx, BOARD_2_RECT);
   drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
   drawSelected(ctx, playerRight.selected, "black", BOARD_2_RECT);
-  drawCooldowns(ctx, "white", BOARD_1_RECT);
-  drawCooldowns(ctx, "black", BOARD_2_RECT);
-  drawPieces(ctx, "white", BOARD_1_RECT);
-  drawPieces(ctx, "black", BOARD_2_RECT);
-  drawPremoves(ctx, "white", BOARD_1_RECT);
-  drawPremoves(ctx, "black", BOARD_2_RECT);
-  drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT);
-  drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT);
+  drawCooldowns(ctx, "white", BOARD_1_RECT, pieces);
+  drawCooldowns(ctx, "black", BOARD_2_RECT, pieces);
+  drawPieces(ctx, "white", BOARD_1_RECT, pieces);
+  drawPieces(ctx, "black", BOARD_2_RECT, pieces);
+  drawPremoves(ctx, "white", BOARD_1_RECT, pieces);
+  drawPremoves(ctx, "black", BOARD_2_RECT, pieces);
+  drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT, pieces);
+  drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT, pieces);
   drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
   drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
 
-  if (countdown) {
-    const num = Math.ceil(countdown / 1000);
+  if (gameState.countdown) {
+    const num = Math.ceil(gameState.countdown / 1000);
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, DRAWING_RECT.width, DRAWING_RECT.height);
     ctx.globalAlpha = 1;
-    ctx.save();
-    ctx.fillStyle = "red";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = "bold 48px sans-serif";
-    ctx.fillText(`${num}`, DRAWING_RECT.width / 2, DRAWING_RECT.height / 2);
-    ctx.restore();
+    redCenteredText(ctx, `${num}`, DRAWING_RECT);
   } else if (winner) {
-    ctx.save();
-    ctx.fillStyle = "red";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = "bold 48px sans-serif";
-    ctx.fillText(
-      `${winner.toUpperCase()} WINS!`,
-      DRAWING_RECT.width / 2,
-      DRAWING_RECT.height / 2,
-    );
-    ctx.restore();
+    redCenteredText(ctx, `${winner.toUpperCase()} WINS!`, DRAWING_RECT);
   }
 }
 
-function updateSelections(dt: number) {
+function redCenteredText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  drawingRect: DOMRect,
+) {
+  redCenteredLines(ctx, text.split("\n"), drawingRect, 64);
+}
+
+function redCenteredLines(
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  drawingRect: DOMRect,
+  fontSize: number,
+) {
+  ctx.save();
+  ctx.fillStyle = "red";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `bold ${fontSize}px sans-serif`;
+  lines.forEach((line, i) => {
+    const yCenter = drawingRect.height / 2;
+    const offset = i - (lines.length - 1) / 2;
+    ctx.fillText(line, drawingRect.width / 2, yCenter + offset * fontSize);
+  });
+  ctx.restore();
+}
+
+function updateSelections(
+  dt: number,
+  playerLeft: typeof gameState.playerLeft,
+  playerRight: typeof gameState.playerRight,
+  pieces: typeof gameState.pieces,
+) {
   if (playerLeft.selected) {
     const selectedPiece = pieces.find(
       (piece) =>
@@ -134,21 +182,35 @@ function animatedBoardCoords(
   y2: number,
   dt: number,
 ) {
-  const speed = dt * 0.02;
-  let x = (1 - speed) * x1 + speed * x2;
-  let y = (1 - speed) * y1 + speed * y2;
-  const distanceToTarget = Math.hypot(x2 - x, y2 - y);
+  const speed = 0.02;
+  x1 += (x2 - x1) * dt * speed;
+  y1 += (y2 - y1) * dt * speed;
+  const distanceToTarget = Math.hypot(x2 - x1, y2 - y1);
   const minDistance = 3.5; // squares away
   if (distanceToTarget > minDistance) {
     const percentToTravel = (distanceToTarget - minDistance) / minDistance;
-    x = x2 * percentToTravel + x * (1 - percentToTravel);
-    y = y2 * percentToTravel + y * (1 - percentToTravel);
+    x1 = x2 * percentToTravel + x1 * (1 - percentToTravel);
+    y1 = y2 * percentToTravel + y1 * (1 - percentToTravel);
   }
-  return { x, y };
+  return { x: x1, y: y1 };
 }
 
-function updatePieces(dt: number) {
+function updatePieces(dt: number, pieces: typeof gameState.pieces) {
   pieces.forEach((piece) => {
+    if (piece.cooldownRemaining) {
+      piece.cooldownRemaining = Math.max(piece.cooldownRemaining - dt, 0);
+      if (piece.cooldownRemaining === 0 && piece.premove) {
+        attemptMove(piece, piece.premove, pieces);
+        piece.premove = null;
+      }
+    }
+    if (piece.premove) {
+      const legal = moveIsLegal(piece, piece.premove, pieces);
+      if (!legal) {
+        piece.premove = null;
+      }
+    }
+
     {
       const y = piece.rank - 1;
       const x = piece.file.charCodeAt(0) - "a".charCodeAt(0);
@@ -161,20 +223,6 @@ function updatePieces(dt: number) {
       );
       piece.animated.x = animated.x;
       piece.animated.y = animated.y;
-    }
-
-    if (piece.cooldownRemaining) {
-      piece.cooldownRemaining = Math.max(piece.cooldownRemaining - dt, 0);
-      if (piece.cooldownRemaining === 0 && piece.premove) {
-        attemptMove(piece, piece.premove);
-        piece.premove = null;
-      }
-    }
-    if (piece.premove) {
-      const legal = moveIsLegal(piece, piece.premove, pieces);
-      if (!legal) {
-        piece.premove = null;
-      }
     }
   });
 }
@@ -215,7 +263,11 @@ const DIRS = {
   right: { x: 1, y: 0 },
 };
 
-function handleInputs() {
+function handleInputs(
+  playerLeft: typeof gameState.playerLeft,
+  playerRight: typeof gameState.playerRight,
+  pieces: typeof gameState.pieces,
+) {
   // shuffle so we don't always prio 1st player
   const playersInfo = shuffled([
     {
@@ -243,7 +295,7 @@ function handleInputs() {
       }
     }
     if (playerInput.actionsJustPressed.has("a")) {
-      handleA(player, playerColor);
+      handleA(player, playerColor, pieces);
     }
   }
 }
@@ -258,8 +310,9 @@ function shuffled<T>(items: T[]) {
 }
 
 function handleA(
-  player: typeof playerLeft | typeof playerRight,
+  player: typeof gameState.playerLeft | typeof gameState.playerRight,
   playerColor: "white" | "black",
+  pieces: typeof gameState.pieces,
 ) {
   if (!player.selected) {
     // handle "a" with no selection
@@ -310,7 +363,7 @@ function handleA(
       player.selected = null;
       return;
     }
-    attemptMove(selectedPiece, coordsToRankAndFile(player.cursor));
+    attemptMove(selectedPiece, coordsToRankAndFile(player.cursor), pieces);
     player.selected = null;
   }
 }
@@ -328,6 +381,7 @@ function attemptMove(
     rank: number;
     file: string;
   },
+  pieces: typeof gameState.pieces,
 ) {
   // if here, time to attempt moving the piece
   const legal = moveIsLegal(piece, target, pieces);
@@ -360,6 +414,7 @@ function drawPremoves(
   ctx: CanvasRenderingContext2D,
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
+  pieces: typeof gameState.pieces,
 ) {
   pieces.forEach((piece) => {
     if (!piece.premove || piece.color !== perspective) return;
@@ -424,6 +479,7 @@ function drawMoveIndicators(
   selected: { x: number; y: number } | null,
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
+  pieces: typeof gameState.pieces,
 ) {
   if (!selected) return;
   const selectedRankAndFile = coordsToRankAndFile(selected);
@@ -466,6 +522,7 @@ function drawCooldowns(
   ctx: CanvasRenderingContext2D,
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
+  pieces: typeof gameState.pieces,
 ) {
   pieces.forEach((piece) => {
     if (piece.cooldownRemaining === 0) return;
@@ -558,6 +615,7 @@ function drawPieces(
   ctx: CanvasRenderingContext2D,
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
+  pieces: typeof gameState.pieces,
 ) {
   pieces.forEach((piece) => {
     const x =
