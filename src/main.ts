@@ -1,4 +1,5 @@
 import { updateAndDraw } from "./game";
+import { updateInput } from "./input";
 
 const FIXED_FPS = null; // null for requestAnimationFrame, or a number for fixed FPS
 const SHOW_FRAME_TIME = true;
@@ -8,12 +9,15 @@ const canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
 const ctx = canvas.getContext("2d")!;
 
+let interval = 0;
+let raf = 0;
+
 if (FIXED_FPS) {
-  setInterval(gameStep, 1000 / FIXED_FPS);
+  interval = setInterval(gameStep, 1000 / FIXED_FPS);
 } else {
   requestAnimationFrame(function render() {
     gameStep();
-    requestAnimationFrame(render);
+    raf = requestAnimationFrame(render);
   });
 }
 
@@ -31,6 +35,7 @@ function gameStep() {
   const newTime = performance.now();
   const dt = newTime - lastTime;
   lastTime = newTime;
+  updateInput();
   updateAndDraw(canvas, ctx, dt);
 
   if (SHOW_FRAME_TIME) {
@@ -60,4 +65,13 @@ function gameStep() {
     );
     ctx.restore();
   }
+}
+
+// i don't completely understand this... but it gives me HMR!
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    cancelAnimationFrame(raf);
+    clearInterval(interval);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
 }

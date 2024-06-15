@@ -1,6 +1,6 @@
 import { pieceImage } from "./piece-image";
 import { startingPieces } from "./starting-pieces";
-import { updateInput, rightInput, leftInput } from "./input";
+import { rightInput, leftInput } from "./input";
 import { legalMoves, moveIsLegal } from "./move-rules";
 import { playSound } from "./sound";
 
@@ -35,28 +35,13 @@ export function updateAndDraw(
   ctx: CanvasRenderingContext2D,
   dt: number,
 ) {
-  updateInput();
   if (gameState.state === "readyUp") {
-    redCenteredLines(
-      ctx,
-      [
-        `hold (a) to start`,
-        ``,
-        `player 1 ${leftInput.actionsDown.has("a") ? "✔️" : "❌"}`,
-        `player 2 ${rightInput.actionsDown.has("a") ? "✔️" : "❌"}`,
-      ],
-      canvas.getBoundingClientRect(),
-      48,
-    );
-
-    if (leftInput.actionsDown.has("a") && rightInput.actionsDown.has("a")) {
-      gameState.state = "playing";
-    } else {
-      return;
-    }
+    handleReadyUp(ctx, canvas);
+    return;
   }
 
   const { pieces, playerLeft, playerRight } = gameState;
+
   // UPDATE
   ///////////////////
   const kings = pieces.filter((piece) => piece.type === "king");
@@ -83,8 +68,12 @@ export function updateAndDraw(
   const { BOARD_1_RECT, BOARD_2_RECT } = calculateBoardRects(DRAWING_RECT);
   drawBoardBackground(ctx, BOARD_1_RECT);
   drawBoardBackground(ctx, BOARD_2_RECT);
+
+  drawOpponentSelected(ctx, playerRight.selected, "white", BOARD_1_RECT);
+  drawOpponentSelected(ctx, playerLeft.selected, "black", BOARD_2_RECT);
   drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
   drawSelected(ctx, playerRight.selected, "black", BOARD_2_RECT);
+
   drawCooldowns(ctx, "white", BOARD_1_RECT, pieces);
   drawCooldowns(ctx, "black", BOARD_2_RECT, pieces);
   drawPieces(ctx, "white", BOARD_1_RECT, pieces);
@@ -93,19 +82,59 @@ export function updateAndDraw(
   drawPremoves(ctx, "black", BOARD_2_RECT, pieces);
   drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT, pieces);
   drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT, pieces);
+
+  drawOpponentCursor(ctx, playerRight.cursor, "white", BOARD_1_RECT);
+  drawOpponentCursor(ctx, playerLeft.cursor, "black", BOARD_2_RECT);
   drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
   drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
 
-  if (gameState.countdown) {
-    const num = Math.ceil(gameState.countdown / 1000);
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, DRAWING_RECT.width, DRAWING_RECT.height);
-    ctx.globalAlpha = 1;
-    redCenteredText(ctx, `${num}`, DRAWING_RECT);
-  } else if (winner) {
-    redCenteredText(ctx, `${winner.toUpperCase()} WINS!`, DRAWING_RECT);
+  drawCountdown(ctx, gameState.countdown, DRAWING_RECT);
+  drawWinnerText(ctx, winner, DRAWING_RECT);
+}
+
+function drawWinnerText(
+  ctx: CanvasRenderingContext2D,
+  winner: string | null,
+  drawingRect: DOMRect,
+) {
+  if (!winner) return;
+  redCenteredText(ctx, `${winner.toUpperCase()} WINS!`, drawingRect);
+}
+
+function drawCountdown(
+  ctx: CanvasRenderingContext2D,
+  countdown: number,
+  drawingRect: DOMRect,
+) {
+  if (countdown === 0) return;
+  const num = Math.ceil(gameState.countdown / 1000);
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, drawingRect.width, drawingRect.height);
+  ctx.globalAlpha = 1;
+  redCenteredText(ctx, `${num}`, drawingRect);
+}
+
+function handleReadyUp(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+) {
+  redCenteredLines(
+    ctx,
+    [
+      `hold (a) to start`,
+      ``,
+      `player 1 ${leftInput.actionsDown.has("a") ? "✔️" : "❌"}`,
+      `player 2 ${rightInput.actionsDown.has("a") ? "✔️" : "❌"}`,
+    ],
+    canvas.getBoundingClientRect(),
+    48,
+  );
+
+  if (leftInput.actionsDown.has("a") && rightInput.actionsDown.has("a")) {
+    gameState.state = "playing";
   }
+  return;
 }
 
 function redCenteredText(
@@ -491,6 +520,12 @@ function drawMoveIndicators(
   if (!selectedPiece) return;
   const moves = legalMoves(selectedPiece, pieces);
   moves.forEach((move) => {
+    const pieceUnderTarget = pieces.find(
+      (p) => p.rank === move.rank && p.file === move.file,
+    );
+    const enemyPiece =
+      pieceUnderTarget && pieceUnderTarget.color !== selectedPiece.color;
+
     if (!move) return; // TODO: update typescript
     const rank = move.rank;
     const file = move.file;
@@ -504,16 +539,43 @@ function drawMoveIndicators(
     ctx.fillStyle = "gray";
     const circleRadius = rect.width / GRID_DIM / 8;
     const gridSquareSize = rect.width / GRID_DIM;
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(
-      rect.x + pX * gridSquareSize + gridSquareSize / 2 - circleRadius,
-      rect.y + pY * gridSquareSize + gridSquareSize / 2 - circleRadius,
-      circleRadius * 2,
-      circleRadius * 2,
-      circleRadius,
-    );
-    ctx.fill();
+
+    if (enemyPiece) {
+      // draw X
+      const circleRadius = rect.width / GRID_DIM / 3;
+      ctx.save();
+      ctx.strokeStyle = "gray";
+      ctx.lineWidth = (0.1 * rect.width) / GRID_DIM;
+      ctx.beginPath();
+      ctx.moveTo(
+        rect.x + pX * gridSquareSize + gridSquareSize / 2 - circleRadius,
+        rect.y + pY * gridSquareSize + gridSquareSize / 2 - circleRadius,
+      );
+      ctx.lineTo(
+        rect.x + pX * gridSquareSize + gridSquareSize / 2 + circleRadius,
+        rect.y + pY * gridSquareSize + gridSquareSize / 2 + circleRadius,
+      );
+      ctx.moveTo(
+        rect.x + pX * gridSquareSize + gridSquareSize / 2 + circleRadius,
+        rect.y + pY * gridSquareSize + gridSquareSize / 2 - circleRadius,
+      );
+      ctx.lineTo(
+        rect.x + pX * gridSquareSize + gridSquareSize / 2 - circleRadius,
+        rect.y + pY * gridSquareSize + gridSquareSize / 2 + circleRadius,
+      );
+      ctx.stroke();
+    } else {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(
+        rect.x + pX * gridSquareSize + gridSquareSize / 2 - circleRadius,
+        rect.y + pY * gridSquareSize + gridSquareSize / 2 - circleRadius,
+        circleRadius * 2,
+        circleRadius * 2,
+        circleRadius,
+      );
+      ctx.fill();
+    }
     ctx.globalAlpha = 1;
   });
 }
@@ -554,12 +616,13 @@ function drawSelected(
   selected: { x: number; y: number } | null,
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
+  color: string = "#8f8",
 ) {
   if (!selected) return;
   const pY = perspective === "white" ? selected.y : GRID_DIM - 1 - selected.y;
   const pX = perspective === "white" ? selected.x : GRID_DIM - 1 - selected.x;
   ctx.globalAlpha = 0.75;
-  ctx.fillStyle = "#8f8";
+  ctx.fillStyle = color;
   ctx.fillRect(
     rect.x + pX * (rect.width / GRID_DIM),
     rect.y + pY * (rect.height / GRID_DIM),
@@ -569,11 +632,30 @@ function drawSelected(
   ctx.globalAlpha = 1;
 }
 
+function drawOpponentSelected(
+  ctx: CanvasRenderingContext2D,
+  selected: { x: number; y: number } | null,
+  perspective: "white" | "black",
+  rect: { x: number; y: number; width: number; height: number },
+) {
+  drawSelected(ctx, selected, perspective, rect, "#f88");
+}
+
+function drawOpponentCursor(
+  ctx: CanvasRenderingContext2D,
+  cursor: { x: number; y: number; animated: { x: number; y: number } },
+  perspective: "white" | "black",
+  rect: { x: number; y: number; width: number; height: number },
+) {
+  drawCursor(ctx, cursor, perspective, rect, "#f88");
+}
+
 function drawCursor(
   ctx: CanvasRenderingContext2D,
   cursor: { x: number; y: number; animated: { x: number; y: number } },
   perspective: "white" | "black",
   rect: { x: number; y: number; width: number; height: number },
+  color: string = "#8f8",
 ) {
   const pY =
     perspective === "white"
@@ -583,7 +665,7 @@ function drawCursor(
     perspective === "white"
       ? cursor.animated.x
       : GRID_DIM - 1 - cursor.animated.x;
-  ctx.strokeStyle = "#afa";
+  ctx.strokeStyle = color;
   const BORDER_WIDTH = rect.width * 0.01;
   ctx.lineWidth = BORDER_WIDTH;
   ctx.strokeRect(

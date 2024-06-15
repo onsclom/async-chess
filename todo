@@ -24,7 +24,7 @@ fancy but important fun stuff:
   x piece move animation
   - piece death animation
 - sounds
-- title screen with some fun starting countdown?
+x title screen with some fun starting countdown?
 
 x randomize player we do actions for first every frame
 (inputs can come in on same frame, lets make it fair)
@@ -51,3 +51,19 @@ x animations
 - implement key repeat for directions!
 
 - maybe checks actually put all pieces on cool down except for pieces that can prevent the check?
+
+---
+
+june 15th
+
+things i'd like to do today:
+- make loading indicator circles
+x show enemy cursor and selection
+- add scale animation to pieces
+- make different move indicators for taking pieces
+- add sounds to more things:
+  - countdown
+  - select
+  - deselect
+  - game over
+- add castling
