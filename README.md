@@ -1,22 +1,43 @@
 # async-chess (super early WIP)
 
-chess, but there are no turns and each piece has a cooldown!
+chess, but without turns!
+
+[checkout a video](https://x.com/onsclom/status/1801763823915045197)
+
+- each piece has a 10 second cooldown
+- no en passant or castling (yet)
+- no check or checkmate, just capture the king to win
+- pawns automatically promote to queen
 
 ## how to play
 
-TODO: [try it out here]()
+[try it out here](https://async-chess.vercel.app/)
 
-this prototype only supports 2 player local multiplayer.
+the current prototype supports 2-player local multiplayer
 
 keyboard controls:
 
-- player 1 (white)
-  - `WASD` to move
-  - `Z` to select/deselect/move pieces
-  - hold `X` to double cursor speed
-- player 2 (black)
-  - arrow keys to move
-  - `.` to select/deselect/move pieces
-  - hold `/` to double cursor speed
+| action                  | player 1 (white) | player 2 (black) |
+| ----------------------- | ---------------- | ---------------- |
+| move                    | wasd             | arrow keys       |
+| select/deselect/confirm | z                | .                |
+| x2 speed                | x (hold)         | / (hold)         |
+
+gamepad controls (only tested on dinput controllers):
+
+| action                  | controller input |
+| ----------------------- | ---------------- |
+| move                    | dpad             |
+| select/deselect/confirm | x                |
+| x2 speed                | o (hold)         |
+
+## why
+
+i wanted to make a rad, free, open-source game. i thought this was a fun game idea.
 
 ## development
+
+1. [install bun](https://bun.sh/docs/installation)
+2. `bun dev` to start the dev server
+
+there is HMR so you don't have to recreate game state on every change! it's really nice!
