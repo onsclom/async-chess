@@ -2,7 +2,7 @@
 
 chess, but without turns!
 
-[checkout a video](https://x.com/onsclom/status/1801763823915045197)
+[gameplay video](https://x.com/onsclom/status/1801763823915045197)
 
 - each piece has a 10 second cooldown
 - no en passant or castling (yet)
@@ -11,9 +11,9 @@ chess, but without turns!
 
 ## how to play
 
-[try it out here](https://async-chess.vercel.app/)
+[play here](https://async-chess.vercel.app/)
 
-the current prototype supports 2-player local multiplayer
+currently supports 2-player local multiplayer
 
 keyboard controls:
 
