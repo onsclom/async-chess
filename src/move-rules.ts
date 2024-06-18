@@ -5,7 +5,7 @@ export function legalMoves(
     color: "white" | "black";
     type: "pawn" | "rook" | "knight" | "bishop" | "queen" | "king";
   },
-  boardPieces: typeof import("./starting-pieces").startingPieces,
+  boardPieces: typeof import("./state").startingPieces,
 ): {
   rank: number;
   file: string;

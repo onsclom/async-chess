@@ -7,16 +7,13 @@ import { gameState, resetGameState } from "./state";
 const PIECE_COOLDOWN = 10000;
 const DARK_COLOR = "#999";
 
-// STATE
-///////////////////
-
 export function updateAndDraw(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   dt: number,
 ) {
   if (gameState.state === "readyUp") {
-    handleReadyUp(ctx, canvas);
+    readyUpUpdateAndDraw(ctx, canvas);
     return;
   }
 
@@ -93,7 +90,7 @@ function drawCountdown(
   redCenteredText(ctx, `${num}`, drawingRect);
 }
 
-function handleReadyUp(
+function readyUpUpdateAndDraw(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
 ) {
