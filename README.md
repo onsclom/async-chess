@@ -33,7 +33,7 @@ gamepad controls (only tested on dinput controllers):
 
 ## why
 
-i wanted to make a rad, free, open-source game. i thought this was a fun game idea.
+i want to make a rad, free, open-source game. i think this is a fun game idea.
 
 ## development
 
