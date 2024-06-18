@@ -5,8 +5,8 @@ const RIGHT_KEYBOARD_MAP = {
   ArrowRight: "right",
   ArrowUp: "up",
   ArrowDown: "down",
-  "/": "a",
-  ".": "b",
+  ".": "a",
+  "/": "b",
 } as const;
 
 const LEFT_KEYBOARD_MAP = {
@@ -14,8 +14,8 @@ const LEFT_KEYBOARD_MAP = {
   d: "right",
   w: "up",
   s: "down",
-  q: "a",
-  e: "b",
+  z: "a",
+  x: "b",
 } as const;
 
 export const leftInput = {
