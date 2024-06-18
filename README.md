@@ -8,6 +8,7 @@ chess, but without turns!
 - no en passant or castling (yet)
 - no check or checkmate, just capture the king to win
 - pawns automatically promote to queen
+- you can premove 1 move ahead
 
 ## how to play
 
