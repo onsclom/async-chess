@@ -1,6 +1,6 @@
 import { pieceImage } from "./piece-image";
 import { rightInput, leftInput } from "./input";
-import { legalMoves, moveIsLegal } from "./move-rules";
+import { legalMoves, moveIsLegal, pieceAtRankAndFile } from "./move-rules";
 import { playSound } from "./sound";
 import { gameState, resetGameState } from "./state";
 
@@ -146,21 +146,25 @@ function updateSelections(
   pieces: typeof gameState.pieces,
 ) {
   if (playerLeft.selected) {
-    const selectedPiece = pieces.find(
-      (piece) =>
-        piece.rank === coordsToRankAndFile(playerLeft.selected!).rank &&
-        piece.file === coordsToRankAndFile(playerLeft.selected!).file,
+    const selectedRankAndFile = coordsToRankAndFile(playerLeft.selected);
+    const selectedPiece = pieceAtRankAndFile(
+      selectedRankAndFile.rank,
+      selectedRankAndFile.file,
+      pieces,
     );
+
     if (!selectedPiece || selectedPiece.color !== "white") {
       playerLeft.selected = null;
     }
   }
   if (playerRight.selected) {
-    const selectedPiece = pieces.find(
-      (piece) =>
-        piece.rank === coordsToRankAndFile(playerRight.selected!).rank &&
-        piece.file === coordsToRankAndFile(playerRight.selected!).file,
+    const selectedRankAndFile = coordsToRankAndFile(playerRight.selected);
+    const selectedPiece = pieceAtRankAndFile(
+      selectedRankAndFile.rank,
+      selectedRankAndFile.file,
+      pieces,
     );
+
     if (!selectedPiece || selectedPiece.color !== "black") {
       playerRight.selected = null;
     }
@@ -231,6 +235,10 @@ function updatePieces(dt: number, pieces: typeof gameState.pieces) {
       piece.animated.y = animated.y;
       piece.animated.scale += (1 - piece.animated.scale) * dt * 0.02;
     }
+
+    const targetOpacity = piece.alive ? 1 : 0;
+    piece.opacity += (targetOpacity - piece.opacity) * dt * 0.02;
+    if (piece.opacity !== 1) console.log(piece.opacity);
   });
 }
 
@@ -326,9 +334,10 @@ function handleA(
   if (!player.selected) {
     // handle "a" with no selection
     const rankAndFile = coordsToRankAndFile(player.cursor);
-    const piece = pieces.find(
-      (piece) =>
-        piece.rank === rankAndFile.rank && piece.file === rankAndFile.file,
+    const piece = pieceAtRankAndFile(
+      rankAndFile.rank,
+      rankAndFile.file,
+      pieces,
     );
     if (!piece || piece.color !== playerColor) return;
     player.selected = { x: player.cursor.x, y: player.cursor.y };
@@ -343,18 +352,20 @@ function handleA(
     }
 
     const selectedRankAndFile = coordsToRankAndFile(player.selected);
-    const selectedPiece = pieces.find(
-      (piece) =>
-        piece.rank === selectedRankAndFile.rank &&
-        piece.file === selectedRankAndFile.file,
+    const selectedPiece = pieceAtRankAndFile(
+      selectedRankAndFile.rank,
+      selectedRankAndFile.file,
+      pieces,
     );
+
     if (!selectedPiece) return;
     if (selectedPiece.color !== playerColor) return;
-    const pieceUnderCursor = pieces.find(
-      (piece) =>
-        piece.rank === coordsToRankAndFile(player.cursor).rank &&
-        piece.file === coordsToRankAndFile(player.cursor).file,
+    const pieceUnderCursor = pieceAtRankAndFile(
+      coordsToRankAndFile(player.cursor).rank,
+      coordsToRankAndFile(player.cursor).file,
+      pieces,
     );
+
     if (pieceUnderCursor && pieceUnderCursor.color === playerColor) {
       player.selected = { x: player.cursor.x, y: player.cursor.y };
       return;
@@ -389,11 +400,9 @@ function attemptMove(
   const legal = moveIsLegal(piece, target, pieces);
   if (!legal) return;
   // capture
-  const pieceUnderTarget = pieces.find(
-    (p) => p.rank === target.rank && p.file === target.file,
-  );
+  const pieceUnderTarget = pieceAtRankAndFile(target.rank, target.file, pieces);
   if (pieceUnderTarget) {
-    pieces.splice(pieces.indexOf(pieceUnderTarget), 1);
+    pieceUnderTarget.alive = false;
     playSound("capture");
   } else {
     playSound("move");
@@ -486,17 +495,16 @@ function drawMoveIndicators(
 ) {
   if (!selected) return;
   const selectedRankAndFile = coordsToRankAndFile(selected);
-  const selectedPiece = pieces.find(
-    (piece) =>
-      piece.rank === selectedRankAndFile.rank &&
-      piece.file === selectedRankAndFile.file,
+  const selectedPiece = pieceAtRankAndFile(
+    selectedRankAndFile.rank,
+    selectedRankAndFile.file,
+    pieces,
   );
   if (!selectedPiece) return;
   const moves = legalMoves(selectedPiece, pieces);
   moves.forEach((move) => {
-    const pieceUnderTarget = pieces.find(
-      (p) => p.rank === move.rank && p.file === move.file,
-    );
+    const pieceUnderTarget = pieceAtRankAndFile(move.rank, move.file, pieces);
+
     const enemyPiece =
       pieceUnderTarget && pieceUnderTarget.color !== selectedPiece.color;
 
@@ -687,6 +695,8 @@ function drawPieces(
     const y0 = rect.y + y * (rect.height / GRID_DIM);
     const x1 = rect.x + (x + 1) * (rect.width / GRID_DIM);
     const y1 = rect.y + (y + 1) * (rect.height / GRID_DIM);
+
+    ctx.globalAlpha = Math.max(piece.opacity, 0);
     ctx.drawImage(
       pieceImage(piece.type, piece.color),
       x0 + (x1 - x0) / 2 - ((x1 - x0) / 2) * scale,
@@ -694,5 +704,6 @@ function drawPieces(
       (x1 - x0) * scale,
       (y1 - y0) * scale,
     );
+    ctx.globalAlpha = 1;
   });
 }

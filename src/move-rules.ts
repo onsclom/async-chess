@@ -1,3 +1,13 @@
+export function pieceAtRankAndFile(
+  rank: number,
+  file: string,
+  pieces: typeof import("./state").gameState.pieces,
+) {
+  return pieces.find(
+    (piece) => piece.rank === rank && piece.file === file && piece.alive,
+  );
+}
+
 export function legalMoves(
   piece: {
     rank: number;
@@ -5,7 +15,7 @@ export function legalMoves(
     color: "white" | "black";
     type: "pawn" | "rook" | "knight" | "bishop" | "queen" | "king";
   },
-  boardPieces: typeof import("./state").startingPieces,
+  boardPieces: typeof import("./state").gameState.pieces,
 ): {
   rank: number;
   file: string;
@@ -13,22 +23,28 @@ export function legalMoves(
   switch (piece.type) {
     case "pawn": {
       const direction = piece.color === "white" ? 1 : -1;
-      const pieceOneAhead = boardPieces.find(
-        (p) => p.rank === piece.rank + direction && p.file === piece.file,
+      const pieceOneAhead = pieceAtRankAndFile(
+        piece.rank + direction,
+        piece.file,
+        boardPieces,
       );
-      const pieceTwoAhead = boardPieces.find(
-        (p) => p.rank === piece.rank + 2 * direction && p.file === piece.file,
+      const pieceTwoAhead = pieceAtRankAndFile(
+        piece.rank + 2 * direction,
+        piece.file,
+        boardPieces,
       );
-      const pieceAheadLeft = boardPieces.find(
-        (p) =>
-          p.rank === piece.rank + direction &&
-          p.file === String.fromCharCode(piece.file.charCodeAt(0) - 1),
-      );
-      const pieceAheadRight = boardPieces.find(
-        (p) =>
-          p.rank === piece.rank + direction &&
-          p.file === String.fromCharCode(piece.file.charCodeAt(0) + 1),
-      );
+      const pieceAheadLeft =
+        pieceAtRankAndFile(
+          piece.rank + direction,
+          String.fromCharCode(piece.file.charCodeAt(0) - 1),
+          boardPieces,
+        ) || false;
+      const pieceAheadRight =
+        pieceAtRankAndFile(
+          piece.rank + direction,
+          String.fromCharCode(piece.file.charCodeAt(0) + 1),
+          boardPieces,
+        ) || false;
 
       const canMoveOneAhead = !pieceOneAhead;
       const canMoveTwoAhead =
@@ -40,7 +56,6 @@ export function legalMoves(
       const canTakeRight =
         pieceAheadRight && pieceAheadRight.color !== piece.color;
 
-      // @ts-ignore
       return [
         canMoveOneAhead && { rank: piece.rank + direction, file: piece.file },
         canMoveTwoAhead && {
@@ -55,7 +70,9 @@ export function legalMoves(
           rank: piece.rank + direction,
           file: String.fromCharCode(piece.file.charCodeAt(0) + 1),
         },
-      ].filter((move) => move && moveIsOnBoard(move));
+      ]
+        .filter((move) => move !== false)
+        .filter((move) => moveIsOnBoard(move));
     }
     case "rook": {
       const moves: {
@@ -76,8 +93,10 @@ export function legalMoves(
             file: String.fromCharCode(piece.file.charCodeAt(0) + i * dir[1]),
           };
           if (!moveIsOnBoard(move)) break;
-          const pieceAtMove = boardPieces.find(
-            (p) => p.rank === move.rank && p.file === move.file,
+          const pieceAtMove = pieceAtRankAndFile(
+            move.rank,
+            move.file,
+            boardPieces,
           );
           if (pieceAtMove) {
             if (pieceAtMove.color !== piece.color) {
@@ -126,8 +145,10 @@ export function legalMoves(
         },
       ];
       return possibleMoves.filter((move) => {
-        const pieceAtMove = boardPieces.find(
-          (p) => p.rank === move.rank && p.file === move.file,
+        const pieceAtMove = pieceAtRankAndFile(
+          move.rank,
+          move.file,
+          boardPieces,
         );
         return (
           moveIsOnBoard(move) &&
@@ -154,8 +175,10 @@ export function legalMoves(
             file: String.fromCharCode(piece.file.charCodeAt(0) + i * dir[1]),
           };
           if (!moveIsOnBoard(move)) break;
-          const pieceAtMove = boardPieces.find(
-            (p) => p.rank === move.rank && p.file === move.file,
+          const pieceAtMove = pieceAtRankAndFile(
+            move.rank,
+            move.file,
+            boardPieces,
           );
           if (pieceAtMove) {
             if (pieceAtMove.color !== piece.color) {
@@ -209,8 +232,10 @@ export function legalMoves(
         },
       ];
       return possibleMoves.filter((move) => {
-        const pieceAtMove = boardPieces.find(
-          (p) => p.rank === move.rank && p.file === move.file,
+        const pieceAtMove = pieceAtRankAndFile(
+          move.rank,
+          move.file,
+          boardPieces,
         );
         return (
           moveIsOnBoard(move) &&
