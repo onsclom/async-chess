@@ -44,6 +44,8 @@ export function updateAndDraw(
 
   drawBoardBackground(ctx, BOARD_1_RECT);
   drawBoardBackground(ctx, BOARD_2_RECT);
+  drawRankAndFileLabels(ctx, BOARD_1_RECT, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], ['8', '7', '6', '5', '4', '3', '2', '1']);
+  drawRankAndFileLabels(ctx, BOARD_2_RECT, ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'], ['1', '2', '3', '4', '5', '6', '7', '8']);
   drawOpponentSelected(ctx, playerRight.selected, "white", BOARD_1_RECT);
   drawOpponentSelected(ctx, playerLeft.selected, "black", BOARD_2_RECT);
   drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
@@ -690,6 +692,31 @@ function drawBoardBackground(
       ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
     }),
   );
+}
+
+function drawRankAndFileLabels(
+  ctx: CanvasRenderingContext2D,
+  rect: { x: number; y: number; width: number; height: number },
+  ranks: string[],
+  files: string[],
+) {
+  const boxSize = (rect.width / GRID_DIM);
+  const fontSize = Math.round(boxSize / 5);
+  if (fontSize < 8) return;
+  const yOffset = boxSize / 4;
+  const xOffset = -boxSize / 4;
+  ctx.fillStyle = '#ccc';
+  ctx.font = `normal ${fontSize}px sans-serif`;
+  ranks.forEach((rank, i) => {
+    const textWidth = ctx.measureText(rank).width;
+    const x = rect.x + (i * boxSize) + (boxSize / 2) - (textWidth / 2);
+    ctx.fillText(rank, x, rect.y + rect.height + yOffset);
+  });
+  files.forEach((file, i) => {
+    const textHeight = ctx.measureText(file).actualBoundingBoxAscent;
+    const y = rect.y + (i * boxSize) + (boxSize / 2) + (textHeight / 2);
+    ctx.fillText(file, rect.x + xOffset, y);
+  });
 }
 
 function drawPieces(
