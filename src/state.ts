@@ -42,7 +42,7 @@ export const startingPieces: {
 ];
 
 const initialGameState = {
-  state: "readyUp" as "readyUp" | "playing",
+  state: "playing" as "readyUp" | "playing",
   pieces: structuredClone(startingPieces).map((piece) => ({
     ...piece,
     cooldownRemaining: 0,
