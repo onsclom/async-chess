@@ -41,14 +41,13 @@ export function updateAndDraw(
   const DRAWING_RECT = canvas.getBoundingClientRect();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const { BOARD_1_RECT, BOARD_2_RECT } = calculateBoardRects(DRAWING_RECT);
+
   drawBoardBackground(ctx, BOARD_1_RECT);
   drawBoardBackground(ctx, BOARD_2_RECT);
-
   drawOpponentSelected(ctx, playerRight.selected, "white", BOARD_1_RECT);
   drawOpponentSelected(ctx, playerLeft.selected, "black", BOARD_2_RECT);
   drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
   drawSelected(ctx, playerRight.selected, "black", BOARD_2_RECT);
-
   drawCooldowns(ctx, "white", BOARD_1_RECT, pieces);
   drawCooldowns(ctx, "black", BOARD_2_RECT, pieces);
   drawPieces(ctx, "white", BOARD_1_RECT, pieces);
@@ -57,12 +56,10 @@ export function updateAndDraw(
   drawPremoves(ctx, "black", BOARD_2_RECT, pieces);
   drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT, pieces);
   drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT, pieces);
-
   drawOpponentCursor(ctx, playerRight.cursor, "white", BOARD_1_RECT);
   drawOpponentCursor(ctx, playerLeft.cursor, "black", BOARD_2_RECT);
   drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
   drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
-
   drawCountdown(ctx, gameState.countdown, DRAWING_RECT);
   drawWinnerText(ctx, winner, DRAWING_RECT);
 }
@@ -238,7 +235,6 @@ function updatePieces(dt: number, pieces: typeof gameState.pieces) {
 
     const targetOpacity = piece.alive ? 1 : 0;
     piece.opacity += (targetOpacity - piece.opacity) * dt * 0.02;
-    if (piece.opacity !== 1) console.log(piece.opacity);
   });
 }
 
@@ -407,11 +403,32 @@ function attemptMove(
   } else {
     playSound("move");
   }
+
+  const castling =
+    piece.type === "king" &&
+    Math.abs(target.file.charCodeAt(0) - piece.file.charCodeAt(0)) === 2;
+
+  if (castling) {
+    const castlingRook = pieceAtRankAndFile(
+      target.rank,
+      target.file === "g" ? "h" : "a",
+      pieces,
+    )!;
+    const rookTargetFile = target.file === "g" ? "f" : "d";
+    castlingRook.file = rookTargetFile;
+    castlingRook.cooldownRemaining = PIECE_COOLDOWN;
+    castlingRook.animated.scale = 1.5;
+    castlingRook.premove = null;
+    castlingRook.moved = true;
+  }
+
   piece.rank = target.rank;
   piece.file = target.file;
   piece.cooldownRemaining = PIECE_COOLDOWN;
   piece.animated.scale = 1.5;
   piece.premove = null;
+  piece.moved = true;
+
   // if the piece is a pawn, check for promotion
   if (piece.type === "pawn") {
     const playerColor = piece.color;
@@ -429,7 +446,7 @@ function drawPremoves(
   pieces: typeof gameState.pieces,
 ) {
   pieces.forEach((piece) => {
-    if (!piece.premove || piece.color !== perspective) return;
+    if (!piece.premove) return;
     const fromX = piece.file.charCodeAt(0) - "a".charCodeAt(0);
     const fromY = 8 - piece.rank;
     const toX = piece.premove.file.charCodeAt(0) - "a".charCodeAt(0);

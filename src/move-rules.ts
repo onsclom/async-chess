@@ -8,13 +8,21 @@ export function pieceAtRankAndFile(
   );
 }
 
-export function legalMoves(
-  piece: {
-    rank: number;
-    file: string;
-    color: "white" | "black";
-    type: "pawn" | "rook" | "knight" | "bishop" | "queen" | "king";
+const CASTLE_MOVES = [
+  {
+    to: "g",
+    rook: "h",
+    mustBeClear: ["f", "g"],
   },
+  {
+    to: "c",
+    rook: "a",
+    mustBeClear: ["b", "c", "d"],
+  },
+];
+
+export function legalMoves(
+  piece: (typeof import("./state").gameState.pieces)[number],
   boardPieces: typeof import("./state").gameState.pieces,
 ): {
   rank: number;
@@ -197,7 +205,24 @@ export function legalMoves(
       return [...rookMoves, ...bishopMoves];
     }
     case "king": {
+      const possibleCastleMoves = CASTLE_MOVES.filter((castleMove) => {
+        if (piece.moved) return false;
+        const rook = pieceAtRankAndFile(
+          piece.rank,
+          castleMove.rook,
+          boardPieces,
+        );
+        if (!rook || rook.moved) return false;
+        return !castleMove.mustBeClear.some((square) => {
+          return pieceAtRankAndFile(piece.rank, square, boardPieces);
+        });
+      }).map((castleMove) => ({
+        rank: piece.rank,
+        file: castleMove.to,
+      }));
+
       const possibleMoves = [
+        ...possibleCastleMoves,
         {
           rank: piece.rank + 1,
           file: piece.file,
@@ -250,14 +275,9 @@ export function legalMoves(
 }
 
 export function moveIsLegal(
-  piece: {
-    rank: number;
-    file: string;
-    color: "white" | "black";
-    type: "pawn" | "rook" | "knight" | "bishop" | "queen" | "king";
-  },
+  piece: (typeof import("./state").gameState.pieces)[number],
   target: { rank: number; file: string },
-  boardPieces: typeof import("./state").startingPieces,
+  boardPieces: typeof import("./state").gameState.pieces,
 ) {
   return legalMoves(piece, boardPieces).some((move) => {
     if (!move) return false;

@@ -51,6 +51,7 @@ const initialGameState = {
 
     alive: true,
     opacity: 1,
+    moved: false,
   })),
   playerLeft: {
     cursor: { x: 4, y: 7, animated: { x: 4, y: 7 } },
