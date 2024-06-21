@@ -701,17 +701,21 @@ function drawRankAndFileLabels(
   files: string[],
 ) {
   const boxSize = (rect.width / GRID_DIM);
+  const fontSize = Math.round(boxSize / 5);
+  if (fontSize < 8) return;
+  const yOffset = boxSize / 4;
+  const xOffset = -boxSize / 4;
   ctx.fillStyle = '#ccc';
-  ctx.font = 'medium 12px sans-serif';
+  ctx.font = `normal ${fontSize}px sans-serif`;
   ranks.forEach((rank, i) => {
     const textWidth = ctx.measureText(rank).width;
     const x = rect.x + (i * boxSize) + (boxSize / 2) - (textWidth / 2);
-    ctx.fillText(rank, x, rect.y + rect.height + 12);
+    ctx.fillText(rank, x, rect.y + rect.height + yOffset);
   });
   files.forEach((file, i) => {
-    const textHeight = 7; // ≈ ctx.measureText(file).actualBoundingBoxAscent;
+    const textHeight = ctx.measureText(file).actualBoundingBoxAscent;
     const y = rect.y + (i * boxSize) + (boxSize / 2) + (textHeight / 2);
-    ctx.fillText(file, rect.x - 10, y);
+    ctx.fillText(file, rect.x + xOffset, y);
   });
 }
 
