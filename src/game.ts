@@ -21,7 +21,7 @@ export function updateAndDraw(
 
   // UPDATE
   ///////////////////
-  const kings = pieces.filter((piece) => piece.type === "king");
+  const kings = pieces.filter((piece) => piece.type === "king" && piece.alive);
   const winner = kings.length === 1 ? kings[0].color : null;
   gameState.countdown = Math.max(gameState.countdown - dt, 0);
 
