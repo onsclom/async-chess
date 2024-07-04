@@ -17,6 +17,7 @@ export function menuUpdateAndDraw(
     leftInput.actionsJustPressed.has("left") ||
     rightInput.actionsJustPressed.has("left")
   ) {
+    // @ts-ignore
     const currentIndex = COOLDOWN_OPTIONS.indexOf(gameState.cooldown);
     gameState.cooldown =
       COOLDOWN_OPTIONS[
@@ -32,7 +33,6 @@ export function menuUpdateAndDraw(
       // @ts-ignore
       const currentIndex = COOLDOWN_OPTIONS.indexOf(gameState.cooldown);
       gameState.cooldown =
-        // @ts-ignore
         COOLDOWN_OPTIONS[(currentIndex + 1) % COOLDOWN_OPTIONS.length];
     }
   }
