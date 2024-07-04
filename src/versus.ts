@@ -4,7 +4,6 @@ import { legalMoves, moveIsLegal, pieceAtRankAndFile } from "./move-rules";
 import { playSound } from "./sound";
 import { gameState, resetGameState } from "./state";
 
-const PIECE_COOLDOWN = 10000;
 const DARK_COLOR = "#999";
 
 export function versusUpdateAndDraw(
@@ -428,7 +427,7 @@ function attemptMove(
     )!;
     const rookTargetFile = target.file === "g" ? "f" : "d";
     castlingRook.file = rookTargetFile;
-    castlingRook.cooldownRemaining = PIECE_COOLDOWN;
+    castlingRook.cooldownRemaining = gameState.cooldown * 1000;
     castlingRook.animated.scale = 1.5;
     castlingRook.premove = null;
     castlingRook.moved = true;
@@ -436,7 +435,7 @@ function attemptMove(
 
   piece.rank = target.rank;
   piece.file = target.file;
-  piece.cooldownRemaining = PIECE_COOLDOWN;
+  piece.cooldownRemaining = gameState.cooldown * 1000;
   piece.animated.scale = 1.5;
   piece.premove = null;
   piece.moved = true;
@@ -600,7 +599,8 @@ function drawCooldowns(
   pieces.forEach((piece) => {
     if (!piece.alive) return;
     if (piece.cooldownRemaining === 0) return;
-    const cooldownPercent = piece.cooldownRemaining / PIECE_COOLDOWN;
+    const cooldownPercent =
+      piece.cooldownRemaining / (gameState.cooldown * 1000);
     const x =
       perspective === "white"
         ? piece.file.charCodeAt(0) - "a".charCodeAt(0)

@@ -41,7 +41,14 @@ export const startingPieces: {
   { type: "pawn", color: "black", rank: 7, file: "h" },
 ];
 
+export const COOLDOWN_OPTIONS = [5, 10, 15] as const;
+
 const initialGameState = {
+  scene: "menu" as "menu" | "versus",
+  cooldown: 10,
+
+  // versus state
+  ////////////////////
   state: "readyUp" as "readyUp" | "playing",
   pieces: structuredClone(startingPieces).map((piece) => ({
     ...piece,

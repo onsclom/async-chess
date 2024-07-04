@@ -67,9 +67,24 @@ x make different move indicators for taking pieces
   - select
   - deselect
   - game over
-- add castling
+x add castling
 - add button repeat
 
 ideas:
 - checks put all pieces on cool downs except for pieces that can prevent the check
 - taking pieces could help lower cooldowns ?
+
+7/4 ideas:
+- on win, show raining pieces of the winner's color
+- add tie timeout timer
+  - add scoring system to limit ties
+    - (add up piece values, and use pawn advancement as tie breaker)
+
+add teams??:
+- controller select:
+
+white   black
+x
+        x
+        x
+x
