@@ -598,6 +598,7 @@ function drawCooldowns(
   pieces: typeof gameState.pieces,
 ) {
   pieces.forEach((piece) => {
+    if (!piece.alive) return;
     if (piece.cooldownRemaining === 0) return;
     const cooldownPercent = piece.cooldownRemaining / PIECE_COOLDOWN;
     const x =
