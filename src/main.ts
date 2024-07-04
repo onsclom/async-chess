@@ -1,4 +1,5 @@
-import { updateAndDraw } from "./game";
+import { versusUpdateAndDraw } from "./versus";
+import { menuUpdateAndDraw } from "./menu";
 import { updateInput } from "./input";
 
 const FIXED_FPS = null; // null for requestAnimationFrame, or a number for fixed FPS
@@ -36,7 +37,8 @@ function gameStep() {
   const dt = newTime - lastTime;
   lastTime = newTime;
   updateInput();
-  updateAndDraw(canvas, ctx, dt);
+  // versusUpdateAndDraw(canvas, ctx, dt);
+  menuUpdateAndDraw(canvas, ctx, dt);
 
   if (SHOW_FRAME_TIME) {
     const endTime = performance.now();
