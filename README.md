@@ -1,6 +1,6 @@
 # async-chess (super early WIP)
 
-chess, but without turns!
+chess, but without turns !
 
 [gameplay video](https://x.com/onsclom/status/1801763823915045197)
 
