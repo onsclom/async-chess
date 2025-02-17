@@ -24,8 +24,10 @@ export function versusUpdateAndDraw(
   const winner = kings.length === 1 ? kings[0].color : null;
   gameState.countdown = Math.max(gameState.countdown - dt, 0);
 
+  gameState.screenShake = gameState.screenShake * (1 - dt / 100);
+
   if (!winner && gameState.countdown === 0) {
-    handleInputs(playerLeft, playerRight, pieces);
+    handleInputs(gameState);
   }
   updateSelections(dt, playerLeft, playerRight, pieces);
   updatePieces(dt, pieces);
@@ -41,38 +43,71 @@ export function versusUpdateAndDraw(
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const { BOARD_1_RECT, BOARD_2_RECT } = calculateBoardRects(DRAWING_RECT);
 
-  drawBoardBackground(ctx, BOARD_1_RECT);
-  drawBoardBackground(ctx, BOARD_2_RECT);
-  drawRankAndFileLabels(
-    ctx,
-    BOARD_1_RECT,
-    ["a", "b", "c", "d", "e", "f", "g", "h"],
-    ["8", "7", "6", "5", "4", "3", "2", "1"],
-  );
-  drawRankAndFileLabels(
-    ctx,
-    BOARD_2_RECT,
-    ["h", "g", "f", "e", "d", "c", "b", "a"],
-    ["1", "2", "3", "4", "5", "6", "7", "8"],
-  );
-  drawOpponentSelected(ctx, playerRight.selected, "white", BOARD_1_RECT);
-  drawOpponentSelected(ctx, playerLeft.selected, "black", BOARD_2_RECT);
-  drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
-  drawSelected(ctx, playerRight.selected, "black", BOARD_2_RECT);
-  drawCooldowns(ctx, "white", BOARD_1_RECT, pieces);
-  drawCooldowns(ctx, "black", BOARD_2_RECT, pieces);
-  drawPieces(ctx, "white", BOARD_1_RECT, pieces);
-  drawPieces(ctx, "black", BOARD_2_RECT, pieces);
-  drawPremoves(ctx, "white", BOARD_1_RECT, pieces);
-  drawPremoves(ctx, "black", BOARD_2_RECT, pieces);
-  drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT, pieces);
-  drawMoveIndicators(ctx, playerRight.selected, "black", BOARD_2_RECT, pieces);
-  drawOpponentCursor(ctx, playerRight.cursor, "white", BOARD_1_RECT);
-  drawOpponentCursor(ctx, playerLeft.cursor, "black", BOARD_2_RECT);
-  drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
-  drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
-  drawCountdown(ctx, gameState.countdown, DRAWING_RECT);
-  drawWinnerText(ctx, winner, DRAWING_RECT);
+  {
+    // screen shake
+    const shakeStrength = 0.5;
+    const dx =
+      Math.sin(performance.now() * 0.03) *
+      gameState.screenShake *
+      10 *
+      shakeStrength;
+    const dy =
+      Math.cos(performance.now() * 0.034) *
+      gameState.screenShake *
+      10 *
+      shakeStrength;
+    const dr =
+      Math.sin(performance.now() * 0.033) *
+      gameState.screenShake *
+      0.1 *
+      shakeStrength;
+
+    ctx.save();
+    ctx.translate(DRAWING_RECT.width / 2 + dx, DRAWING_RECT.height / 2 + dy);
+    ctx.rotate(dr);
+    ctx.translate(-DRAWING_RECT.width / 2, -DRAWING_RECT.height / 2);
+
+    drawBoardBackground(ctx, BOARD_1_RECT);
+    drawBoardBackground(ctx, BOARD_2_RECT);
+    drawRankAndFileLabels(
+      ctx,
+      BOARD_1_RECT,
+      ["a", "b", "c", "d", "e", "f", "g", "h"],
+      ["8", "7", "6", "5", "4", "3", "2", "1"],
+    );
+    drawRankAndFileLabels(
+      ctx,
+      BOARD_2_RECT,
+      ["h", "g", "f", "e", "d", "c", "b", "a"],
+      ["1", "2", "3", "4", "5", "6", "7", "8"],
+    );
+    drawOpponentSelected(ctx, playerRight.selected, "white", BOARD_1_RECT);
+    drawOpponentSelected(ctx, playerLeft.selected, "black", BOARD_2_RECT);
+    drawSelected(ctx, playerLeft.selected, "white", BOARD_1_RECT);
+    drawSelected(ctx, playerRight.selected, "black", BOARD_2_RECT);
+    drawCooldowns(ctx, "white", BOARD_1_RECT, pieces);
+    drawCooldowns(ctx, "black", BOARD_2_RECT, pieces);
+    drawPieces(ctx, "white", BOARD_1_RECT, pieces);
+    drawPieces(ctx, "black", BOARD_2_RECT, pieces);
+    drawPremoves(ctx, "white", BOARD_1_RECT, pieces);
+    drawPremoves(ctx, "black", BOARD_2_RECT, pieces);
+    drawMoveIndicators(ctx, playerLeft.selected, "white", BOARD_1_RECT, pieces);
+    drawMoveIndicators(
+      ctx,
+      playerRight.selected,
+      "black",
+      BOARD_2_RECT,
+      pieces,
+    );
+    drawOpponentCursor(ctx, playerRight.cursor, "white", BOARD_1_RECT);
+    drawOpponentCursor(ctx, playerLeft.cursor, "black", BOARD_2_RECT);
+    drawCursor(ctx, playerLeft.cursor, "white", BOARD_1_RECT);
+    drawCursor(ctx, playerRight.cursor, "black", BOARD_2_RECT);
+    drawCountdown(ctx, gameState.countdown, DRAWING_RECT);
+    drawWinnerText(ctx, winner, DRAWING_RECT);
+
+    ctx.restore();
+  }
 }
 
 function drawWinnerText(
@@ -285,11 +320,9 @@ const DIRS = {
   right: { x: 1, y: 0 },
 };
 
-function handleInputs(
-  playerLeft: typeof gameState.playerLeft,
-  playerRight: typeof gameState.playerRight,
-  pieces: typeof gameState.pieces,
-) {
+function handleInputs(game: typeof gameState) {
+  const { playerLeft, playerRight, pieces } = game;
+
   // shuffle so we don't always prio 1st player
   const playersInfo = shuffled([
     {
@@ -319,7 +352,7 @@ function handleInputs(
       }
     }
     if (playerInput.actionsJustPressed.has("a")) {
-      handleA(player, playerColor, pieces);
+      handleA(player, playerColor, game);
     }
   }
 }
@@ -336,8 +369,10 @@ function shuffled<T>(items: T[]) {
 function handleA(
   player: typeof gameState.playerLeft | typeof gameState.playerRight,
   playerColor: "white" | "black",
-  pieces: typeof gameState.pieces,
+  game: typeof gameState,
 ) {
+  const { pieces } = game;
+
   if (!player.selected) {
     // handle "a" with no selection
     const rankAndFile = coordsToRankAndFile(player.cursor);
@@ -409,10 +444,15 @@ function attemptMove(
   // capture
   const pieceUnderTarget = pieceAtRankAndFile(target.rank, target.file, pieces);
   if (pieceUnderTarget) {
+    // CAPTURE
     pieceUnderTarget.alive = false;
     playSound("capture");
+    gameState.screenShake = 1;
   } else {
+    // MOVE
     playSound("move");
+    gameState.screenShake += 0.5;
+    gameState.screenShake = Math.min(gameState.screenShake, 1);
   }
 
   const castling =

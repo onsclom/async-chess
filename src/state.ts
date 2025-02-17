@@ -69,6 +69,8 @@ const initialGameState = {
   },
   countdown: 3000,
   gameWasOver: false,
+
+  screenShake: 0,
 };
 
 export let gameState = structuredClone(initialGameState);
