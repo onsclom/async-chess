@@ -39,6 +39,26 @@ export function menuUpdateAndDraw(
 
   const drawRect = canvas.getBoundingClientRect();
   {
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    {
+      // draw fun chess background
+      ctx.save();
+      const gridSize = 100;
+      ctx.translate(
+        (performance.now() * 0.05) % gridSize,
+        (performance.now() * 0.05) % gridSize,
+      );
+      for (let x = -gridSize; x <= drawRect.width; x += gridSize) {
+        for (let y = -gridSize; y <= drawRect.height; y += gridSize) {
+          ctx.fillStyle = (x + y) % (gridSize * 2) === 0 ? "black" : "#333";
+          ctx.fillRect(x, y, gridSize, gridSize);
+        }
+      }
+      ctx.restore();
+    }
+
     const titleRect = {
       x: 0,
       y: 0,
@@ -46,8 +66,6 @@ export function menuUpdateAndDraw(
       height: drawRect.height / 3,
     };
 
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.fillStyle = "white";
     ctx.font = "40px sans-serif";

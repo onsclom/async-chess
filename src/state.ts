@@ -55,7 +55,6 @@ const initialGameState = {
     cooldownRemaining: 0,
     premove: null as null | { rank: number; file: string },
     animated: { x: piece.file.charCodeAt(0) - 97, y: piece.rank - 1, scale: 1 },
-
     alive: true,
     opacity: 1,
     moved: false,
