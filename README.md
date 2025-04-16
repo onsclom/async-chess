@@ -5,7 +5,7 @@ chess, but without turns !
 [gameplay video](https://x.com/onsclom/status/1801763823915045197)
 
 - each piece has a 10 second cooldown
-- no en passant or castling (yet)
+- no en passant (yet)
 - no check or checkmate, just capture the king to win
 - pawns automatically promote to queen
 - you can premove 1 move ahead
