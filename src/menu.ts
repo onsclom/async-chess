@@ -1,22 +1,16 @@
-import { rightInput, leftInput } from "./input";
 import { gameState, COOLDOWN_OPTIONS } from "./state";
+import { spud, Button } from "@spud.gg/api";
 
 export function menuUpdateAndDraw(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   dt: number,
 ) {
-  if (
-    leftInput.actionsJustPressed.has("a") ||
-    rightInput.actionsJustPressed.has("a")
-  ) {
+  if (spud.anyPlayer.buttonJustPressed(Button.South)) {
     gameState.scene = "versus";
   }
 
-  if (
-    leftInput.actionsJustPressed.has("left") ||
-    rightInput.actionsJustPressed.has("left")
-  ) {
+  if (spud.anyPlayer.buttonJustPressed(Button.DpadLeft)) {
     // @ts-ignore
     const currentIndex = COOLDOWN_OPTIONS.indexOf(gameState.cooldown);
     gameState.cooldown =
@@ -25,10 +19,7 @@ export function menuUpdateAndDraw(
       ];
   }
 
-  if (
-    leftInput.actionsJustPressed.has("right") ||
-    rightInput.actionsJustPressed.has("right")
-  ) {
+  if (spud.anyPlayer.buttonJustPressed(Button.DpadRight)) {
     {
       // @ts-ignore
       const currentIndex = COOLDOWN_OPTIONS.indexOf(gameState.cooldown);

@@ -1,8 +1,8 @@
 import { pieceImage } from "./piece-image";
-import { rightInput, leftInput } from "./input";
 import { legalMoves, moveIsLegal, pieceAtRankAndFile } from "./move-rules";
 import { playSound } from "./sound";
 import { gameState, resetGameState } from "./state";
+import { Button, spud } from "@spud.gg/api";
 
 const DARK_COLOR = "#999";
 
@@ -142,14 +142,17 @@ function readyUpUpdateAndDraw(
     [
       `hold (a) to start`,
       ``,
-      `player 1 ${leftInput.actionsDown.has("a") ? "✔️" : "❌"}`,
-      `player 2 ${rightInput.actionsDown.has("a") ? "✔️" : "❌"}`,
+      `player 1 ${spud.p1.buttonsDown.has(Button.South) ? "✔️" : "❌"}`,
+      `player 2 ${spud.p2.buttonsDown.has(Button.South) ? "✔️" : "❌"}`,
     ],
     canvas.getBoundingClientRect(),
     48,
   );
 
-  if (leftInput.actionsDown.has("a") && rightInput.actionsDown.has("a")) {
+  if (
+    spud.p1.buttonsDown.has(Button.South) &&
+    spud.p2.buttonsDown.has(Button.South)
+  ) {
     gameState.state = "playing";
   }
   return;
@@ -313,12 +316,55 @@ function calculateBoardRects(DRAWING_RECT: DOMRect) {
   return { BOARD_1_RECT, BOARD_2_RECT };
 }
 
-const DIRS = {
-  up: { x: 0, y: -1 },
-  down: { x: 0, y: 1 },
-  left: { x: -1, y: 0 },
-  right: { x: 1, y: 0 },
+const BUTTON_TO_DIRECTION = {
+  [Button.DpadUp]: { x: 0, y: -1 },
+  [Button.DpadDown]: { x: 0, y: 1 },
+  [Button.DpadLeft]: { x: -1, y: 0 },
+  [Button.DpadRight]: { x: 1, y: 0 },
 };
+
+const stickState = {
+  p1: {
+    x: "neutral" as "left" | "right" | "neutral",
+    y: "neutral" as "up" | "down" | "neutral",
+  },
+  p2: {
+    x: "neutral" as "left" | "right" | "neutral",
+    y: "neutral" as "up" | "down" | "neutral",
+  },
+};
+
+function radial(coord: { x: number; y: number }, deadzone = 0.25) {
+  const angle = Math.atan2(coord.y, coord.x);
+  let magnitude = Math.sqrt(coord.x * coord.x + coord.y * coord.y);
+
+  if (magnitude <= deadzone) {
+    return { x: 0, y: 0 };
+  }
+
+  if (magnitude > 1) {
+    magnitude = 1;
+  }
+
+  return {
+    x: Math.cos(angle) * magnitude,
+    y: Math.sin(angle) * magnitude,
+  };
+}
+
+export function axial(scalar: number, deadzone = 0) {
+  let magnitude = Math.sqrt(scalar * scalar);
+
+  if (magnitude <= deadzone) {
+    return 0;
+  }
+
+  if (magnitude > 1) {
+    return scalar < 0 ? -1 : 1;
+  }
+
+  return scalar < 0 ? -magnitude : magnitude;
+}
 
 function handleInputs(game: typeof gameState) {
   const { playerLeft, playerRight, pieces } = game;
@@ -327,31 +373,106 @@ function handleInputs(game: typeof gameState) {
   const playersInfo = shuffled([
     {
       player: playerLeft,
-      playerInput: leftInput,
+      playerInput: spud.p1,
       playerColor: "white",
     },
     {
       player: playerRight,
-      playerInput: rightInput,
+      playerInput: spud.p2,
       playerColor: "black",
     },
   ] as const);
+
+  // console.log("radial:");
+  // console.log(radial(spud.p1.leftStick));
+  // console.log("raw:");
+  // console.log({ x: spud.p1.leftStick.x, y: spud.p1.leftStick.y });
+
   for (const { player, playerInput, playerColor } of playersInfo) {
-    const dirActions = ["left", "up", "right", "down"] as const;
+    const dirActions = [
+      Button.DpadLeft,
+      Button.DpadUp,
+      Button.DpadRight,
+      Button.DpadDown,
+    ] as const;
     const mirror = player === playerLeft ? 1 : -1;
-    const multiplier = playerInput.actionsDown.has("b") ? 2 : 1;
+    const multiplier = playerInput.buttonsDown.has(Button.East) ? 2 : 1;
     for (const action of dirActions) {
-      const dir = DIRS[action];
-      if (playerInput.actionsJustPressed.has(action)) {
+      const dir = BUTTON_TO_DIRECTION[action];
+      if (playerInput.buttonJustPressed(action)) {
         player.cursor.x =
           (player.cursor.x + dir.x * mirror * multiplier + 8) % 8;
         player.cursor.y =
           (player.cursor.y + dir.y * mirror * multiplier + 8) % 8;
-        // turns out this is pretty obnoxious lol
-        // playSound("step");
       }
     }
-    if (playerInput.actionsJustPressed.has("a")) {
+
+    const oldPlayerStickState = structuredClone(
+      player === playerLeft ? stickState.p1 : stickState.p2,
+    );
+    const playerStickState =
+      player === playerLeft ? stickState.p1 : stickState.p2;
+
+    {
+      // updating player stick stickState
+      const activationThreshold = 0.2;
+      if (playerInput.leftStick.x > activationThreshold) {
+        playerStickState.x = "right";
+      } else if (playerInput.leftStick.x < -activationThreshold) {
+        playerStickState.x = "left";
+      }
+      if (playerInput.leftStick.y > activationThreshold) {
+        playerStickState.y = "down";
+      } else if (playerInput.leftStick.y < -activationThreshold) {
+        playerStickState.y = "up";
+      }
+
+      const deactivationThreshold = 0.1;
+      if (
+        playerInput.leftStick.x > -deactivationThreshold &&
+        playerStickState.x === "left"
+      ) {
+        playerStickState.x = "neutral";
+      }
+      if (
+        playerInput.leftStick.x < deactivationThreshold &&
+        playerStickState.x === "right"
+      ) {
+        playerStickState.x = "neutral";
+      }
+      if (
+        playerInput.leftStick.y < deactivationThreshold &&
+        playerStickState.y === "down"
+      ) {
+        playerStickState.y = "neutral";
+      }
+      if (
+        playerInput.leftStick.y > -deactivationThreshold &&
+        playerStickState.y === "up"
+      ) {
+        playerStickState.y = "neutral";
+      }
+    }
+
+    if (
+      oldPlayerStickState.y !== playerStickState.y &&
+      playerStickState.y !== "neutral"
+    ) {
+      const dir = playerStickState.y === "up" ? -1 : 1;
+      // player.cursor.y = (player.cursor.y + dir * mirror * multiplier + 8) % 8;
+      player.cursor.y = (player.cursor.y + dir * mirror * multiplier + 8) % 8;
+      console.log("inputed action");
+    }
+
+    if (
+      oldPlayerStickState.x !== playerStickState.x &&
+      playerStickState.x !== "neutral"
+    ) {
+      const dir = playerStickState.x === "left" ? -1 : 1;
+      player.cursor.x = (player.cursor.x + dir * mirror * multiplier + 8) % 8;
+    }
+
+    if (playerInput.buttonJustPressed(Button.South)) {
       handleA(player, playerColor, game);
     }
   }

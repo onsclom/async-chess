@@ -1,8 +1,8 @@
-import { updateInput } from "./input";
 import { gameUpdateAndDraw } from "./game";
+import { spud, clearInputs } from "@spud.gg/api";
 
 const FIXED_FPS = null; // null for requestAnimationFrame, or a number for fixed FPS
-const SHOW_FRAME_TIME = true;
+const SHOW_FRAME_TIME = false;
 const BUDGET = 1000 / 120;
 
 const canvas = document.createElement("canvas");
@@ -13,6 +13,7 @@ let interval = 0;
 let raf = 0;
 
 if (FIXED_FPS) {
+  // @ts-expect-error
   interval = setInterval(gameStep, 1000 / FIXED_FPS);
 } else {
   requestAnimationFrame(function render() {
@@ -35,8 +36,9 @@ function gameStep() {
   const newTime = performance.now();
   const dt = newTime - lastTime;
   lastTime = newTime;
-  updateInput();
+
   gameUpdateAndDraw(canvas, ctx, dt);
+  clearInputs();
 
   if (SHOW_FRAME_TIME) {
     const endTime = performance.now();
