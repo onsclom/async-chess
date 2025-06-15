@@ -1,8 +1,8 @@
+import { Button, spud } from "@spud.gg/api";
 import { pieceImage } from "./piece-image";
 import { legalMoves, moveIsLegal, pieceAtRankAndFile } from "./move-rules";
 import { playSound } from "./sound";
 import { gameState, resetGameState } from "./state";
-import { Button, CardinalDirection, spud } from "@spud.gg/api";
 
 const DARK_COLOR = "#999";
 
@@ -323,17 +323,6 @@ const BUTTON_TO_DIRECTION = {
   [Button.DpadRight]: { x: 1, y: 0 },
 };
 
-const DIRECTION_DELTAS = {
-  [CardinalDirection.N]: { x: 0, y: 1 },
-  [CardinalDirection.NE]: { x: 1, y: 1 },
-  [CardinalDirection.NW]: { x: -1, y: 1 },
-  [CardinalDirection.S]: { x: 0, y: -1 },
-  [CardinalDirection.SE]: { x: 1, y: -1 },
-  [CardinalDirection.SW]: { x: -1, y: -1 },
-  [CardinalDirection.E]: { x: 1, y: 0 },
-  [CardinalDirection.W]: { x: -1, y: 0 },
-};
-
 function handleInputs(game: typeof gameState) {
   const { playerLeft, playerRight } = game;
 
@@ -370,11 +359,18 @@ function handleInputs(game: typeof gameState) {
       }
     }
 
-    const { didJustMove, direction } = playerInput.leftStick.motion({ diagonals: true });
-    if (didJustMove) {
-      const delta = DIRECTION_DELTAS[direction];
-      player.cursor.x = (player.cursor.x + delta.x * mirror * multiplier + 8) % 8;
-      player.cursor.y = (player.cursor.y + delta.y * mirror * multiplier + 8) % 8;
+    const { justMoved } = playerInput.leftStick.motion({ activate: 0.4, deactivate: 0.2 });
+    if (justMoved.Up) {
+      player.cursor.y = (player.cursor.y + mirror * multiplier + 8) % 8;
+    }
+    if (justMoved.Down) {
+      player.cursor.y = (player.cursor.y - mirror * multiplier + 8) % 8;
+    }
+    if (justMoved.Left) {
+      player.cursor.x = (player.cursor.x + -mirror * multiplier + 8) % 8;
+    }
+    if (justMoved.Right) {
+      player.cursor.x = (player.cursor.x + mirror * multiplier + 8) % 8;
     }
 
     if (playerInput.buttonJustPressed(Button.South)) {
