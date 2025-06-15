@@ -13,6 +13,6 @@
     "vite": "^5.2.0"
   },
   "dependencies": {
-    "@spud.gg/api": "0.0.10"
+    "@spud.gg/api": "0.0.11"
   }
 }
