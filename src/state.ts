@@ -62,10 +62,18 @@ const initialGameState = {
   playerLeft: {
     cursor: { x: 4, y: 7, animated: { x: 4, y: 7 } },
     selected: null as null | { x: number; y: number },
+    directionRepeat: {
+      lastHeld: null as null | { x: number; y: number },
+      repeatTime: 0,
+    },
   },
   playerRight: {
     cursor: { x: 4, y: 0, animated: { x: 4, y: 0 } },
     selected: null as null | { x: number; y: number },
+    directionRepeat: {
+      lastHeld: null as null | { x: number; y: number },
+      repeatTime: 0,
+    },
   },
   countdown: 3000,
   gameWasOver: false,

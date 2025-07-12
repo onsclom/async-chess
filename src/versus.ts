@@ -27,7 +27,7 @@ export function versusUpdateAndDraw(
   gameState.screenShake = gameState.screenShake * (1 - dt / 100);
 
   if (!winner && gameState.countdown === 0) {
-    handleInputs(gameState);
+    handleInputs(gameState, dt);
   }
   updateSelections(dt, playerLeft, playerRight, pieces);
   updatePieces(dt, pieces);
@@ -330,7 +330,7 @@ const DIRECTION_TO_BUTTON = {
   [Motion.Right]: Button.DpadRight,
 };
 
-function handleInputs(game: typeof gameState) {
+function handleInputs(game: typeof gameState, dt: number) {
   const { playerLeft, playerRight } = game;
 
   // shuffle so we don't always prio 1st player
@@ -350,29 +350,85 @@ function handleInputs(game: typeof gameState) {
   for (const { player, playerInput, playerColor } of playersInfo) {
     const mirror = player === playerLeft ? 1 : -1;
     const multiplier = playerInput.buttonsDown.has(Button.East) ? 2 : 1;
-    const { justMoved } = playerInput.leftStick.motion({
+    const { justMoved, direction } = playerInput.leftStick.motion({
       activate: 0.2,
       deactivate: 0.1,
     });
-    for (const direction of [
-      Motion.Up,
-      Motion.Down,
-      Motion.Left,
-      Motion.Right,
-    ]) {
-      const button = DIRECTION_TO_BUTTON[direction];
-      const dir = DIRECTION_VECTORS[direction];
-      if (playerInput.buttonJustPressed(button) || justMoved[direction]) {
-        player.cursor.x =
-          (player.cursor.x + dir.x * mirror * multiplier + 8) % 8;
-        player.cursor.y =
-          (player.cursor.y + dir.y * mirror * multiplier + 8) % 8;
-        playerInput.haptic({
-          duration: 100,
-          weak: 1,
-        });
-        playSound("cursor-move");
+
+    const repeatDelay = 200;
+    const repeatInterval = 100;
+    const previousDirectionHeld = player.directionRepeat.lastHeld;
+
+    let directionHeld = { x: 0, y: 0 };
+    // update directionHeld
+    if (direction.x === "Left" || playerInput.buttonHeld(Button.DpadLeft)) {
+      directionHeld.x = -1;
+    }
+    if (direction.x === "Right" || playerInput.buttonHeld(Button.DpadRight)) {
+      directionHeld.x = 1;
+    }
+    if (direction.y === "Up" || playerInput.buttonHeld(Button.DpadUp)) {
+      directionHeld.y = -1;
+    }
+    if (direction.y === "Down" || playerInput.buttonHeld(Button.DpadDown)) {
+      directionHeld.y = 1;
+    }
+
+    // if the direction has changed, reset the repeat time
+    if (
+      !previousDirectionHeld ||
+      previousDirectionHeld.x !== directionHeld.x ||
+      previousDirectionHeld.y !== directionHeld.y
+    ) {
+      player.directionRepeat.lastHeld = directionHeld;
+      player.directionRepeat.repeatTime = 0;
+    } else {
+      player.directionRepeat.repeatTime += dt;
+    }
+
+    // if the direction is held for long enough, repeat the input
+    if (player.directionRepeat.repeatTime >= repeatDelay) {
+      player.directionRepeat.repeatTime -= repeatInterval;
+      if (Math.abs(directionHeld.x) > 0 || Math.abs(directionHeld.y) > 0) {
+        justMoved[Motion.Up] = directionHeld.y < 0;
+        justMoved[Motion.Down] = directionHeld.y > 0;
+        justMoved[Motion.Left] = directionHeld.x < 0;
+        justMoved[Motion.Right] = directionHeld.x > 0;
       }
+    }
+
+    let xToMove = 0;
+    let yToMove = 0;
+    if (justMoved[Motion.Up] || playerInput.buttonJustPressed(Button.DpadUp)) {
+      yToMove = -1 * multiplier;
+    }
+    if (
+      justMoved[Motion.Down] ||
+      playerInput.buttonJustPressed(Button.DpadDown)
+    ) {
+      yToMove = 1 * multiplier;
+    }
+    if (
+      justMoved[Motion.Left] ||
+      playerInput.buttonJustPressed(Button.DpadLeft)
+    ) {
+      xToMove = -1 * multiplier;
+    }
+    if (
+      justMoved[Motion.Right] ||
+      playerInput.buttonJustPressed(Button.DpadRight)
+    ) {
+      xToMove = 1 * multiplier;
+    }
+
+    if (xToMove || yToMove) {
+      player.cursor.x = (player.cursor.x + xToMove * mirror + 8) % 8;
+      player.cursor.y = (player.cursor.y + yToMove * mirror + 8) % 8;
+      playerInput.haptic({
+        duration: 100,
+        weak: 1,
+      });
+      playSound("cursor-move");
     }
 
     if (playerInput.buttonJustPressed(Button.South)) {
