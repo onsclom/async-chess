@@ -1,8 +1,8 @@
+import { Button, Motion, spud } from "@spud.gg/api";
 import { pieceImage } from "./piece-image";
 import { legalMoves, moveIsLegal, pieceAtRankAndFile } from "./move-rules";
 import { playSound } from "./sound";
 import { gameState, resetGameState } from "./state";
-import { Button, spud } from "@spud.gg/api";
 
 const DARK_COLOR = "#999";
 
@@ -316,58 +316,22 @@ function calculateBoardRects(DRAWING_RECT: DOMRect) {
   return { BOARD_1_RECT, BOARD_2_RECT };
 }
 
-const BUTTON_TO_DIRECTION = {
-  [Button.DpadUp]: { x: 0, y: -1 },
-  [Button.DpadDown]: { x: 0, y: 1 },
-  [Button.DpadLeft]: { x: -1, y: 0 },
-  [Button.DpadRight]: { x: 1, y: 0 },
+const DIRECTION_VECTORS = {
+  [Motion.Up]: { x: 0, y: -1 },
+  [Motion.Down]: { x: 0, y: 1 },
+  [Motion.Left]: { x: -1, y: 0 },
+  [Motion.Right]: { x: 1, y: 0 },
 };
 
-const stickState = {
-  p1: {
-    x: "neutral" as "left" | "right" | "neutral",
-    y: "neutral" as "up" | "down" | "neutral",
-  },
-  p2: {
-    x: "neutral" as "left" | "right" | "neutral",
-    y: "neutral" as "up" | "down" | "neutral",
-  },
+const DIRECTION_TO_BUTTON = {
+  [Motion.Up]: Button.DpadUp,
+  [Motion.Down]: Button.DpadDown,
+  [Motion.Left]: Button.DpadLeft,
+  [Motion.Right]: Button.DpadRight,
 };
-
-function radial(coord: { x: number; y: number }, deadzone = 0.25) {
-  const angle = Math.atan2(coord.y, coord.x);
-  let magnitude = Math.sqrt(coord.x * coord.x + coord.y * coord.y);
-
-  if (magnitude <= deadzone) {
-    return { x: 0, y: 0 };
-  }
-
-  if (magnitude > 1) {
-    magnitude = 1;
-  }
-
-  return {
-    x: Math.cos(angle) * magnitude,
-    y: Math.sin(angle) * magnitude,
-  };
-}
-
-export function axial(scalar: number, deadzone = 0) {
-  let magnitude = Math.sqrt(scalar * scalar);
-
-  if (magnitude <= deadzone) {
-    return 0;
-  }
-
-  if (magnitude > 1) {
-    return scalar < 0 ? -1 : 1;
-  }
-
-  return scalar < 0 ? -magnitude : magnitude;
-}
 
 function handleInputs(game: typeof gameState) {
-  const { playerLeft, playerRight, pieces } = game;
+  const { playerLeft, playerRight } = game;
 
   // shuffle so we don't always prio 1st player
   const playersInfo = shuffled([
@@ -383,93 +347,19 @@ function handleInputs(game: typeof gameState) {
     },
   ] as const);
 
-  // console.log("radial:");
-  // console.log(radial(spud.p1.leftStick));
-  // console.log("raw:");
-  // console.log({ x: spud.p1.leftStick.x, y: spud.p1.leftStick.y });
-
   for (const { player, playerInput, playerColor } of playersInfo) {
-    const dirActions = [
-      Button.DpadLeft,
-      Button.DpadUp,
-      Button.DpadRight,
-      Button.DpadDown,
-    ] as const;
     const mirror = player === playerLeft ? 1 : -1;
     const multiplier = playerInput.buttonsDown.has(Button.East) ? 2 : 1;
-    for (const action of dirActions) {
-      const dir = BUTTON_TO_DIRECTION[action];
-      if (playerInput.buttonJustPressed(action)) {
+    const { justMoved } = playerInput.leftStick.motion({ activate: 0.4, deactivate: 0.2 });
+    for (const direction of [Motion.Up, Motion.Down, Motion.Left, Motion.Right]) {
+      const button = DIRECTION_TO_BUTTON[direction];
+      const dir = DIRECTION_VECTORS[direction];
+      if (playerInput.buttonJustPressed(button) || justMoved[direction]) {
         player.cursor.x =
           (player.cursor.x + dir.x * mirror * multiplier + 8) % 8;
         player.cursor.y =
           (player.cursor.y + dir.y * mirror * multiplier + 8) % 8;
       }
-    }
-
-    const oldPlayerStickState = structuredClone(
-      player === playerLeft ? stickState.p1 : stickState.p2,
-    );
-    const playerStickState =
-      player === playerLeft ? stickState.p1 : stickState.p2;
-
-    {
-      // updating player stick stickState
-      const activationThreshold = 0.2;
-      if (playerInput.leftStick.x > activationThreshold) {
-        playerStickState.x = "right";
-      } else if (playerInput.leftStick.x < -activationThreshold) {
-        playerStickState.x = "left";
-      }
-      if (playerInput.leftStick.y > activationThreshold) {
-        playerStickState.y = "down";
-      } else if (playerInput.leftStick.y < -activationThreshold) {
-        playerStickState.y = "up";
-      }
-
-      const deactivationThreshold = 0.1;
-      if (
-        playerInput.leftStick.x > -deactivationThreshold &&
-        playerStickState.x === "left"
-      ) {
-        playerStickState.x = "neutral";
-      }
-      if (
-        playerInput.leftStick.x < deactivationThreshold &&
-        playerStickState.x === "right"
-      ) {
-        playerStickState.x = "neutral";
-      }
-      if (
-        playerInput.leftStick.y < deactivationThreshold &&
-        playerStickState.y === "down"
-      ) {
-        playerStickState.y = "neutral";
-      }
-      if (
-        playerInput.leftStick.y > -deactivationThreshold &&
-        playerStickState.y === "up"
-      ) {
-        playerStickState.y = "neutral";
-      }
-    }
-
-    if (
-      oldPlayerStickState.y !== playerStickState.y &&
-      playerStickState.y !== "neutral"
-    ) {
-      const dir = playerStickState.y === "up" ? -1 : 1;
-      // player.cursor.y = (player.cursor.y + dir * mirror * multiplier + 8) % 8;
-      player.cursor.y = (player.cursor.y + dir * mirror * multiplier + 8) % 8;
-      console.log("inputed action");
-    }
-
-    if (
-      oldPlayerStickState.x !== playerStickState.x &&
-      playerStickState.x !== "neutral"
-    ) {
-      const dir = playerStickState.x === "left" ? -1 : 1;
-      player.cursor.x = (player.cursor.x + dir * mirror * multiplier + 8) % 8;
     }
 
     if (playerInput.buttonJustPressed(Button.South)) {
