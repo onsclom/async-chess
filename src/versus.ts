@@ -350,8 +350,16 @@ function handleInputs(game: typeof gameState) {
   for (const { player, playerInput, playerColor } of playersInfo) {
     const mirror = player === playerLeft ? 1 : -1;
     const multiplier = playerInput.buttonsDown.has(Button.East) ? 2 : 1;
-    const { justMoved } = playerInput.leftStick.motion({ activate: 0.4, deactivate: 0.2 });
-    for (const direction of [Motion.Up, Motion.Down, Motion.Left, Motion.Right]) {
+    const { justMoved } = playerInput.leftStick.motion({
+      activate: 0.2,
+      deactivate: 0.1,
+    });
+    for (const direction of [
+      Motion.Up,
+      Motion.Down,
+      Motion.Left,
+      Motion.Right,
+    ]) {
       const button = DIRECTION_TO_BUTTON[direction];
       const dir = DIRECTION_VECTORS[direction];
       if (playerInput.buttonJustPressed(button) || justMoved[direction]) {
@@ -359,6 +367,11 @@ function handleInputs(game: typeof gameState) {
           (player.cursor.x + dir.x * mirror * multiplier + 8) % 8;
         player.cursor.y =
           (player.cursor.y + dir.y * mirror * multiplier + 8) % 8;
+        playerInput.haptic({
+          duration: 100,
+          weak: 1,
+        });
+        playSound("cursor-move");
       }
     }
 
@@ -383,6 +396,12 @@ function handleA(
   game: typeof gameState,
 ) {
   const { pieces } = game;
+
+  const playerInput = playerColor === "white" ? spud.p1 : spud.p2;
+  playerInput.haptic({
+    duration: 100,
+    strong: 1,
+  });
 
   if (!player.selected) {
     // handle "a" with no selection

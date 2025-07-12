@@ -7,13 +7,20 @@ const soundNames = [
   // chess.com sounds
   "capture", "move", "promote",
   // other sounds
+  "cursor-move"
 ] as const;
+
+const customVolumes = {
+  "cursor-move": 0.15,
+};
 
 export function playSound(soundName: (typeof soundNames)[number]) {
   const sound = new Audio(`./sounds/${soundName}.mp3`);
   const source = audioContext.createMediaElementSource(sound);
 
-  const volume = 1;
+  // @ts-expect-error
+  const volume = customVolumes[soundName] ?? 1.0;
+
   masterGain.gain.value = volume;
 
   source.connect(masterGain);
